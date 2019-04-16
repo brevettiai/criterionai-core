@@ -6,6 +6,7 @@ from itertools import chain
 from collections import defaultdict
 from types import SimpleNamespace
 import os
+from tensorflow.python.lib.io import file_io
 
 log = logging.getLogger(__name__)
 
@@ -62,13 +63,23 @@ class CriterionConfig:
         log.info(schema)
         return CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
 
-    def complete_job(self, model_path="artifacts/saved_model.tar.gz"):
+
+
+    def artifact_path(self, *paths):
+        return path.join(self.job_dir, "artifacts", paths)
+
+    def complete_job(self, tmp_package_path, package_path="artifacts/saved_model.tar.gz"):
         """
-        Complete job
-        :param model_path:
+        Complete job by uploading package to gcs and notifying api
+        :param tmp_package_path: Path to tar archive with python package
+        :param package_path: package path on gcs
         :return:
         """
-        complete_url = self.host_name + self.api_endpoints['complete'] + model_path
+
+        gcs_model_path = self.job_dir + "/" + package_path
+        file_io.copy(tmp_package_path, gcs_model_path, overwrite=True)
+
+        complete_url = self.host_name + self.api_endpoints['complete'] + package_path
         try:
             r = requests.post(complete_url)
             log.info('Job completed')
