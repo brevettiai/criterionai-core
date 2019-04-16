@@ -24,6 +24,8 @@ def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_
     :param samples: dict of existing samples to extend
     :return: samples dict with new samples on the format {cat1:[samples...], cat2:...]}
     """
+    sep = os.sep if not dataset.startswith("gs://") else "/"
+    
     if samples is None:
         samples = {}
 

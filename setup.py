@@ -4,7 +4,7 @@ from setuptools import setup
 REQUIRED_PACKAGES = ['google-cloud-storage==1.14.0']
 
 setup(
-    name='criterion-packages-image_segmentation',
+    name='criterion_core',
     version='0.1',
     url='https://github.com/mypackage.git',
     author='Emil Tyge',

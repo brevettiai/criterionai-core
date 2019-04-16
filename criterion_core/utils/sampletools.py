@@ -54,7 +54,7 @@ def split_datasets_by_class(datasets, split):
     s1, s2 = [], []
     for ds, dsv in datasets.items():
         for cat, samples in dsv.items():
-            mask = np.random.rand(len(samples)) <= 0.8
+            mask = np.random.rand(len(samples)) >= split
             s = np.array(samples)
             s1.append(s[mask])
             s2.append(s[~mask])
