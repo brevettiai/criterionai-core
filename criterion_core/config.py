@@ -6,6 +6,7 @@ from itertools import chain
 from collections import defaultdict
 from types import SimpleNamespace
 import os
+import tempfile
 from tensorflow.python.lib.io import file_io
 
 log = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class CriterionConfig:
             complete=complete_url,
             remote=remote_url,
         )
+        self._temporary_path = tempfile.TemporaryDirectory(prefix=self.name + "-")
 
     @staticmethod
     def from_mlengine(job_dir, schema_path):
@@ -63,10 +65,14 @@ class CriterionConfig:
         log.info(schema)
         return CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
 
+    def get_facets_folder(self):
+        return self.job_dir
 
+    def temp_path(self, *paths):
+        return path.join(self._temporary_path, *paths)
 
     def artifact_path(self, *paths):
-        return path.join(self.job_dir, "artifacts", paths)
+        return path.join(self.job_dir, "artifacts", *paths)
 
     def complete_job(self, tmp_package_path, package_path="artifacts/saved_model.tar.gz"):
         """
@@ -88,6 +94,8 @@ class CriterionConfig:
             log.warning("HTTP error on complete job", exc_info=e)
         except requests.exceptions.RequestException as e:
             log.warning("No Response on complete job", exc_info=e)
+
+        self._temporary_path.cleanup()
 
     def __str__(self):
         raise NotImplementedError
@@ -120,6 +128,7 @@ def merge_settings(schema, settings, check_required_fields=True):
 
     return dicts_to_simple_namespace(default_settings)
 
+
 def dict_merger(source, target):
     """
     Merge two dicts of dicts
@@ -132,6 +141,7 @@ def dict_merger(source, target):
             dict_merger(v, target[k])
         else:
             target[k] = v
+
 
 def in_dicts(d, uri):
     """
