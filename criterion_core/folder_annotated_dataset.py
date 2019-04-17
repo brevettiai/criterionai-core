@@ -22,7 +22,7 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
     :param filter: Process files, return None to ignore
     :param samples: dict of existing samples to extend
     :return: samples dict with new samples on the format {cat1:[samples...], cat2:...]}
-    """'
+    """
     
     file_sys = open_fs(dataset["path"])
 
