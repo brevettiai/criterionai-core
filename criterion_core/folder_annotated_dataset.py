@@ -24,7 +24,7 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
     :return: samples dict with new samples on the format {cat1:[samples...], cat2:...]}
     """
     
-    file_sys = open_fs(dataset["path"])
+    file_sys = open_fs(dataset["bucket"])
 
     if samples is None:
         samples = {}
