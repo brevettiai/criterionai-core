@@ -67,4 +67,4 @@ if __name__ == '__main__':
 
     samples = list(sampletools.flatten_dataset(dssamples))
 
-    prepare_facets(samples, output_path)
+    build_facets(samples, output_path)

@@ -74,6 +74,16 @@ class CriterionConfig:
     def artifact_path(self, *paths):
         return path.join(self.job_dir, "artifacts", *paths)
 
+    def upload_chart(self, name, vegalite_json):
+        charts_url = '{}{}&name={}'.format(self.host_name + self.api_endpoints['charts'] + name)
+        try:
+            r = requests.post(charts_url, headers={'Content-Type': 'application/json'}, data=vegalite_json)
+        except requests.exceptions.HTTPError as e:
+            log.warning("HTTP error on complete job", exc_info=e)
+        except requests.exceptions.RequestException as e:
+            log.warning("No Response on complete job", exc_info=e)
+        return r
+
     def complete_job(self, tmp_package_path, package_path="artifacts/saved_model.tar.gz"):
         """
         Complete job by uploading package to gcs and notifying api

@@ -15,23 +15,23 @@ def walk(top):
         yield from walk(os.path.join(top, folder))
 
 
-def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
+def load_dataset(folder, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
     Load a dataset using the last n directories as category
-    :param dataset: top part of dataset to walk
+    :param folder: top folder of dataset to walk
     :param category_depth: Depth of category extraction
     :param filter: Process files, return None to ignore
     :param samples: dict of existing samples to extend
     :return: samples dict with new samples on the format {cat1:[samples...], cat2:...]}
     """
-    sep = os.sep if not dataset.startswith("gs://") else "/"
+    sep = os.sep if not folder.startswith("gs://") else "/"
     
     if samples is None:
         samples = {}
 
     category_map = {} if category_map is None else category_map
 
-    for path, folders, files in os.walk(dataset):
+    for path, folders, files in os.walk(folder):
         dir_ = path[:-1] if path.endswith("/") else path
         category = dir_.rsplit(os.sep, category_depth)
         category = category[-1] if category_depth == 1 else category[1:]
@@ -44,6 +44,7 @@ def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_
             sample = file if filter is None else filter(os.path.join(path, file), category)
 
             if not sample is None:
+                sample["dataset"] = folder.rsplit(sep, 1)[-1] if name is None else name
                 samples.setdefault(category, []).append(sample)
     return samples
 
@@ -71,12 +72,12 @@ def load_image_datasets(datasets, class_map=None, force_categories=False):
     :param datasets:
     :return:
     """
-    paths = {x['id']: x['bucket'] for x in datasets}
-    datasets = {}
+    datasets_ = {}
 
-    for idx, path in paths.items():
-        datasets[idx] = load_dataset(path,
+    for d in datasets:
+        datasets_[d['id']] = load_dataset(d['bucket'],
+                                      d['name'],
                                      filter=filter_file_by_ending({'bmp', 'jpeg', 'jpg', 'png'}),
                                      category_map=class_map)
 
-    return datasets
+    return datasets_
