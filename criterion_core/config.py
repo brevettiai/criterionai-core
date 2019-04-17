@@ -7,7 +7,7 @@ from collections import defaultdict
 from types import SimpleNamespace
 import os
 import tempfile
-from tensorflow.python.lib.io import file_io
+from fs import open_fs
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class CriterionConfig:
     """
 
     def __init__(self, job_dir, id, name, datasets, settings, api_key, host_name, charts_url, complete_url, remote_url,
-                 schema, check_required_settings=True):
+                 schema, check_required_settings=True, **kwargs):
         """
         :param schema: JSON schema used for model definition
         :param parameters: setup parameters overwriting default schema values
@@ -37,6 +37,7 @@ class CriterionConfig:
             remote=remote_url,
         )
         self._temporary_path = tempfile.TemporaryDirectory(prefix=self.name + "-")
+        self.__dict__.update(kwargs)
 
     @staticmethod
     def from_mlengine(job_dir, schema_path):
@@ -46,10 +47,13 @@ class CriterionConfig:
         :param schema_path: path for model schema
         :return: CriterionConfig object
         """
-        parameter_path = path.join(job_dir, "info.json")
+
+        job_fs = open_fs(job_dir)
+        
+        parameter_path = "/info.json"
 
         log.info(parameter_path)
-        with open(parameter_path, 'r') as fp:
+        with job_fs.open(parameter_path, 'r') as fp:
             parameters = json.load(fp)
 
         log.info(parameters)
@@ -180,7 +184,7 @@ def dicts_to_simple_namespace(dicts):
 
 if __name__ == '__main__':
     schemafile = r'C:\Users\emtyg\dev\novo\criterionai-packages\imageclassification\settings-schema.json'
-    with open(schemafile) as fp:
+    with file_io.FileIO(schemafile) as fp:
         schema = json.load(fp)
 
     CriterionConfig("", "", "", {}, "", "", "", schema)
