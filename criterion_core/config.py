@@ -69,13 +69,13 @@ class CriterionConfig:
         return self.job_dir
 
     def temp_path(self, *paths):
-        return path.join(self._temporary_path, *paths)
+        return path.join(self._temporary_path.name, *paths)
 
     def artifact_path(self, *paths):
         return path.join(self.job_dir, "artifacts", *paths)
 
     def upload_chart(self, name, vegalite_json):
-        charts_url = '{}{}&name={}'.format(self.host_name + self.api_endpoints['charts'] + name)
+        charts_url = '{}{}&name={}'.format(self.host_name, self.api_endpoints['charts'], name)
         try:
             r = requests.post(charts_url, headers={'Content-Type': 'application/json'}, data=vegalite_json)
         except requests.exceptions.HTTPError as e:

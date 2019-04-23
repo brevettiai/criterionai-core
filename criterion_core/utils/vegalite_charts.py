@@ -2,7 +2,7 @@ import altair as alt
 import pandas as pd
 
 def dataset_summary(samples):
-    data = pd.DataFrame(samples) \
+    data = pd.DataFrame(list(samples)) \
         .groupby(["dataset", "category"]) \
         .size().reset_index(name="samples")
 

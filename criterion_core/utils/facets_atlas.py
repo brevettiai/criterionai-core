@@ -49,7 +49,7 @@ def build_facets(samples, output_path, atlas_param=None):
     Image.fromarray(atlas).save(path.join(output_path, 'spriteatlas.jpeg'))
 
     with open(path.join(output_path, 'facets.json'), 'w') as fp:
-        json.dump(samples, fp)
+        json.dump(list(samples), fp)
 
 
 if __name__ == '__main__':
