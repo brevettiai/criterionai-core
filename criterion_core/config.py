@@ -56,7 +56,7 @@ class CriterionConfig:
         with open(schema_path, 'r') as fp:
             schema = json.load(fp)
 
-        config = CriterionConfig(job_dir=job_dir, schema=schema, **parameters
+        config = CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
         log.info(config)
         return config
 
