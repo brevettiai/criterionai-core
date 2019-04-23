@@ -31,7 +31,7 @@ def load_dataset(folder, name=None, category_depth=1, filter=None, samples=None,
 
     category_map = {} if category_map is None else category_map
 
-    for path, folders, files in os.walk(folder):
+    for path, folders, files in walk(folder):
         dir_ = path[:-1] if path.endswith("/") else path
         category = dir_.rsplit(os.sep, category_depth)
         category = category[-1] if category_depth == 1 else category[1:]
