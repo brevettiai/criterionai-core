@@ -1,0 +1,216 @@
+{
+  "fields": [
+    {
+      "type": "label",
+      "label": "Data"
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Network input width",
+      "model": "input_width",
+      "default": 224,
+      "min": 96,
+      "max": 4096,
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Network input height",
+      "model": "input_height",
+      "default": 224,
+      "min": 96,
+      "max": 4096,
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Image channels",
+      "model": "input_channels",
+      "default": 3,
+      "min": 1,
+      "max": 4,
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "text",
+      "label": "Output classes, separated by ','",
+      "model": "classes",
+      "required": false
+    },
+    {
+      "type": "textArea",
+      "label": "Json class mapping",
+      "model": "class_mapping",
+      "hint": "Max 5000 characters",
+      "max": 5000,
+      "placeholder": "Map classes to folder names",
+      "default": "{\n \"gode\": \"A\",\n \"chips\": [\"B\",\"C\"]\n}",
+      "rows": 4,
+      "required": true
+    },
+    {
+      "type": "label",
+      "label": "Training"
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Epochs",
+      "model": "epochs",
+      "default": 10,
+      "min": 0,
+      "max": 50,
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Batch Size",
+      "model": "batch_size",
+      "default": 32,
+      "min": 1,
+      "max": 64,
+      "required": true
+    },
+    {
+      "type": "select",
+      "label": "Loss function",
+      "model": "loss",
+      "values": [
+        "weighted_binary_crossentropy",
+        "binary_crossentropy"
+      ],
+      "default": "weighted_binary_crossentropy",
+      "required": true
+    },
+    {
+      "type": "textArea",
+      "label": "Json class weights",
+      "model": "class_weights",
+      "hint": "Max 5000 characters",
+      "max": 5000,
+      "placeholder": "Weight some classes more than others",
+      "default": "{\n  \"chips\": 10\n}",
+      "rows": 4
+    },
+    {
+      "type": "label",
+      "label": "Validation"
+    },
+    {
+      "type": "select",
+      "label": "Splitting strategy",
+      "model": "validation.split_strategy",
+      "values": [
+        "by_class"
+      ],
+      "default": "by_class",
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Split percentage",
+      "model": "validation.split_percentage",
+      "default": 20,
+      "min": 0,
+      "max": 100,
+      "required": true
+    },
+    {
+      "type": "label",
+      "label": "Data Augmentation"
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Vertical translation range in percent",
+      "model": "data_augmentation.vertical_translation_range",
+      "default": 1,
+      "min": 0,
+      "max": 100,
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Horizontal translation range in percent",
+      "model": "data_augmentation.horizontal_translation_range",
+      "default": 1,
+      "min": 0,
+      "max": 100,
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Scaling range in percent",
+      "model": "data_augmentation.scaling_range",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Rotation range in degrees",
+      "model": "data_augmentation.rotation_angle",
+      "default": 5,
+      "min": 0,
+      "max": 180,
+      "required": true
+    },
+    {
+      "type": "input",
+      "inputType": "number",
+      "label": "Shear range",
+      "model": "data_augmentation.shear_range",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "required": true
+    },
+    {
+      "type": "checkbox",
+      "label": "Can images be flipped horizontally?",
+      "model": "data_augmentation.flip_horizontal",
+      "default": false,
+      "required": true
+    },
+    {
+      "type": "checkbox",
+      "label": "Can images be flipped vertically?",
+      "model": "data_augmentation.flip_vertical",
+      "default": false,
+      "required": true
+    },
+    {
+      "type": "checkbox",
+      "label": "Color correction",
+      "model": "data_augmentation.color_correct",
+      "default": true
+    },
+    {
+      "type": "label",
+      "label": "Export"
+    },
+    {
+      "type": "select",
+      "label": "Input image format in production",
+      "model": "img_format",
+      "values": [
+        "bmp",
+        "jpeg",
+        "png"
+      ],
+      "default": "bmp",
+      "required": true
+    }
+  ]
+}
