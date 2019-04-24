@@ -1,11 +1,13 @@
 import json
-from .utils import path  # , gcs_config_hacks
+from .utils import path#, gcs_config_hacks
 import logging
 import requests
 from itertools import chain
 from collections import defaultdict
 from types import SimpleNamespace
-import os
+from json import JSONEncoder
+import tempfile
+from tensorflow.python.lib.io import file_io
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ class CriterionConfig:
             complete=complete_url,
             remote=remote_url,
         )
+        self._temporary_path = tempfile.TemporaryDirectory(prefix=self.name + "-")
 
     @staticmethod
     def from_mlengine(job_dir, schema_path):
@@ -45,30 +48,49 @@ class CriterionConfig:
         """
         parameter_path = path.join(job_dir, "info.json")
 
-        log.info(parameter_path)
-        with open(parameter_path, 'r') as fp:
+        log.info("Config args found at: '%s'" % parameter_path)
+        with file_io.FileIO(parameter_path, 'r') as fp:
             parameters = json.load(fp)
-
         log.info(parameters)
-        log.info(schema_path)
 
-        log.info("Find schema")
-        log.info(os.path.dirname(os.path.realpath(__file__)))
-
-        log.info(os.getcwd())
-        with open(schema_path, 'r') as fp:
+        with file_io.FileIO(schema_path, 'r') as fp:
             schema = json.load(fp)
 
-        log.info(schema)
-        return CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
+        config = CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
+        log.info(config)
+        return config
 
-    def complete_job(self, model_path="artifacts/saved_model.tar.gz"):
+    def get_facets_folder(self):
+        return self.job_dir
+
+    def temp_path(self, *paths):
+        return path.join(self._temporary_path.name, *paths)
+
+    def artifact_path(self, *paths):
+        return path.join(self.job_dir, "artifacts", *paths)
+
+    def upload_chart(self, name, vegalite_json):
+        charts_url = '{}{}&name={}'.format(self.host_name, self.api_endpoints['charts'], name)
+        try:
+            r = requests.post(charts_url, headers={'Content-Type': 'application/json'}, data=vegalite_json)
+        except requests.exceptions.HTTPError as e:
+            log.warning("HTTP error on complete job", exc_info=e)
+        except requests.exceptions.RequestException as e:
+            log.warning("No Response on complete job", exc_info=e)
+        return r
+
+    def complete_job(self, tmp_package_path, package_path="artifacts/saved_model.tar.gz"):
         """
-        Complete job
-        :param model_path:
+        Complete job by uploading package to gcs and notifying api
+        :param tmp_package_path: Path to tar archive with python package
+        :param package_path: package path on gcs
         :return:
         """
-        complete_url = self.host_name + self.api_endpoints['complete'] + model_path
+
+        gcs_model_path = self.job_dir + "/" + package_path
+        file_io.copy(tmp_package_path, gcs_model_path, overwrite=True)
+
+        complete_url = self.host_name + self.api_endpoints['complete'] + package_path
         try:
             r = requests.post(complete_url)
             log.info('Job completed')
@@ -78,8 +100,16 @@ class CriterionConfig:
         except requests.exceptions.RequestException as e:
             log.warning("No Response on complete job", exc_info=e)
 
+        self._temporary_path.cleanup()
+
     def __str__(self):
-        raise NotImplementedError
+        return self.ConfigEncoder().encode(self)
+
+    class ConfigEncoder(JSONEncoder):
+        def default(self, o):
+            if isinstance(o, CriterionConfig):
+                return {k: v for k, v in o.__dict__.items() if not k.startswith("_")}
+            return o.__dict__
 
 
 def merge_settings(schema, settings, check_required_fields=True):
@@ -109,6 +139,7 @@ def merge_settings(schema, settings, check_required_fields=True):
 
     return dicts_to_simple_namespace(default_settings)
 
+
 def dict_merger(source, target):
     """
     Merge two dicts of dicts
@@ -121,6 +152,7 @@ def dict_merger(source, target):
             dict_merger(v, target[k])
         else:
             target[k] = v
+
 
 def in_dicts(d, uri):
     """
