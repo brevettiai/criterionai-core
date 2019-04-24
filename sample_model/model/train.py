@@ -1,4 +1,3 @@
-
 import argparse
 import logging
 import os
@@ -7,6 +6,7 @@ from criterion_core import CriterionConfig, load_image_datasets
 from criterion_core.utils.sampletools import split_datasets
 
 log = logging.getLogger(__name__)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
