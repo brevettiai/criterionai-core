@@ -9,6 +9,7 @@ from multiprocessing.pool import ThreadPool as Pool
 from multiprocessing import sharedctypes
 import json
 import os
+from tensorflow.python.lib.io import file_io
 
 
 def fill_array(args):
@@ -48,7 +49,7 @@ def build_facets(samples, output_path, atlas_param=None):
     atlas = create_atlas(samples, **atlas_param)
     Image.fromarray(atlas).save(path.join(output_path, 'spriteatlas.jpeg'))
 
-    with open(path.join(output_path, 'facets.json'), 'w') as fp:
+    with file_io.FileIO(path.join(output_path, 'facets.json'), 'w') as fp:
         json.dump(list(samples), fp)
 
 

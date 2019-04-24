@@ -1,5 +1,5 @@
 import json
-from .utils import path, gcs_config_hacks
+from .utils import path#, gcs_config_hacks
 import logging
 import requests
 from itertools import chain
@@ -49,11 +49,11 @@ class CriterionConfig:
         parameter_path = path.join(job_dir, "info.json")
 
         log.info("Config args found at: '%s'" % parameter_path)
-        with open(parameter_path, 'r') as fp:
+        with file_io.FileIO(parameter_path, 'r') as fp:
             parameters = json.load(fp)
         log.info(parameters)
 
-        with open(schema_path, 'r') as fp:
+        with file_io.FileIO(schema_path, 'r') as fp:
             schema = json.load(fp)
 
         config = CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
