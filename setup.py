@@ -8,7 +8,6 @@ REQUIRED_PACKAGES = [
     'requests>=2.21.0',
     'imageio>=2.5.0',
     'Pillow>=6.0.0',
-    'tensorflow>=1.13',
 ]
 
 setup(
