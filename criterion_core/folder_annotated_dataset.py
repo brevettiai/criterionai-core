@@ -1,10 +1,11 @@
 import os
 from fs import open_fs
 from functools import reduce
+import asyncio
+import aioftp
 
 def partition(items, func):
     return reduce(lambda x, y: x[not func(y)].append(y) or x, items, ([], []))
-
 
 def walk(top):
     items = file_io.list_directory_v2(top)
@@ -13,6 +14,13 @@ def walk(top):
     for folder in folders:
         yield from walk(os.path.join(top, folder))
 
+async def walk_ftp(host, user, password):
+    files = []
+    async with aioftp.ClientSession(host=host, login=user, password=password) as client:
+        for path, info in (await client.list(recursive=True)):
+            if info["type"] == "file":
+                files.append(path)
+    return files
 
 def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
@@ -23,7 +31,8 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
     :param samples: dict of existing samples to extend
     :return: samples dict with new samples on the format {cat1:[samples...], cat2:...]}
     """
-    file_sys = open_fs(dataset["path"])
+    file_sys = open_fs(dataset["bucket"])
+    file_sys.timeout = 60
 
     if samples is None:
         samples = {}
@@ -42,12 +51,11 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
             path = '/'.join([root, file.name])
             sample = dict(path=path) if filter is None else filter(path, category)
 
-            if not sample is None:
+            if not sample is None and len(category)>0:
                 sample["dataset"] = dataset['name']
                 sample["file_sys"] = file_sys
                 samples.setdefault(category, []).append(sample)
     return samples
-
 
 def filter_file_by_ending(ftypes):
     """
