@@ -13,6 +13,44 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing import image
 import pandas as pd
 import altair as alt
+import asyncio
+import aioftp
+
+class mini_batch_downloader:
+    def __init__(self, ftp_connections):
+        self.ftp_connections = ftp_connections
+        self._sessions = {}
+
+    async def connect(self):
+        self._sessions = dict()
+        for kk, vv in self.ftp_connections.items():
+            client = self._sessions[kk] = aioftp.Client()
+            await client.connect(vv['host'])
+            await client.login(vv['user'], vv['password'])
+        return self
+
+    def __del__(self, *err):
+        self.disconnect()
+
+    def disconnect(self):
+        for client in self._sessions.values():
+            client.close()
+        self._sessions = {}
+
+    async def download(self, files):
+        for ftp_id, path in files:
+            await self._sessions[ftp_id].download(path)
+                
+class batch_downloader():
+    def __init__(self, ftp_connections, async_num):
+        self.async_num = async_num
+        self.downloaders = [mini_batch_downloader(ftp_connections) for ii in range(async_num)]
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(asyncio.wait(tuple([mbd.connect() for mbd in self.downloaders])))
+        
+    def download_batch(self, files):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(asyncio.wait(tuple(self.downloaders[ii].download([ff for ff in files[ii::self.async_num]]) for ii in range(self.async_num))))
 
 def parse_training_args(unparsed):
     parser = argparse.ArgumentParser()
@@ -59,7 +97,7 @@ def parse_category_info(class_map, critical_classes, folders):
     return classes, class_indices, train_folders, all_classes
 
 def process_img(img_f, rois, target_shape, augmentation):
-    with  img_f['file_sys'].open(img_f['path'], 'rb') as ff:
+    with  img_f['file_sys'].openbin(img_f['path'], 'rb') as ff:
         img = imageio.imread(ff)
     img_roi = sel_rois(img, rois)
     scale_fraction = min((float(target_shape[ii]) / img_roi.shape[ii] for ii in range(2)))
