@@ -1,5 +1,6 @@
 #https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 import os
+import threading
 import argparse
 import numpy as np
 import mimetypes
@@ -15,42 +16,79 @@ import pandas as pd
 import altair as alt
 import asyncio
 import aioftp
+import aiofiles
+import threading
+from threading import current_thread
+from concurrent.futures import ThreadPoolExecutor
+import uuid
+
+threadLocal = threading.local()
 
 class mini_batch_downloader:
-    def __init__(self, ftp_connections):
+    def __init__(self, ftp_connections, id):
         self.ftp_connections = ftp_connections
-        self._sessions = {}
+        self.id = id
+
+    def get_sessions(self):
+        return getattr(threadLocal, f'sessions_{self.id}', {})
+    
+    def set_sessions(self, sessions):
+        setattr(threadLocal, f'sessions_{self.id}', sessions)
 
     async def connect(self):
-        self._sessions = dict()
+        self.disconnect()
+        sessions = self.get_sessions()
         for kk, vv in self.ftp_connections.items():
-            client = self._sessions[kk] = aioftp.Client()
-            await client.connect(vv['host'])
-            await client.login(vv['user'], vv['password'])
+            client = sessions[kk] = aioftp.Client(socket_timeout=60, path_timeout=60)
+            for connection_attempt in range(10):
+                try:
+                    await client.connect(vv['host'])
+                    await client.login(vv['user'], vv['password'])
+                except aioftp.errors.StatusCodeError:
+                    pass
+                else:
+                    break            
+
+        self.set_sessions(sessions)
         return self
 
     def __del__(self, *err):
         self.disconnect()
 
     def disconnect(self):
-        for client in self._sessions.values():
+        sessions = self.get_sessions()
+        for client in sessions.values():
             client.close()
-        self._sessions = {}
+        self.set_sessions({})
 
     async def download(self, files):
-        for ftp_id, path in files:
-            await self._sessions[ftp_id].download(path)
-                
+        sessions = self.get_sessions()
+        for ftp_id, path, outp in files:
+            for download_attempt in range(10):
+                try:
+                    async with aiofiles.open(outp, 'wb') as out_file, sessions[ftp_id].download_stream(path) as stream:
+                        async for block in stream.iter_by_block():
+                            await out_file.write(block)
+                except aioftp.errors.StatusCodeError:
+                    pass
+                else:
+                    break            
+
 class batch_downloader():
     def __init__(self, ftp_connections, async_num):
         self.async_num = async_num
-        self.downloaders = [mini_batch_downloader(ftp_connections) for ii in range(async_num)]
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.wait(tuple([mbd.connect() for mbd in self.downloaders])))
-        
+        self.downloaders = [mini_batch_downloader(ftp_connections, ii) for ii in range(async_num)]
+
     def download_batch(self, files):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.wait(tuple(self.downloaders[ii].download([ff for ff in files[ii::self.async_num]]) for ii in range(self.async_num))))
+        loop = getattr(threadLocal, 'loop', None)
+        if loop is None:
+            loop = asyncio.new_event_loop()
+            threadLocal.loop = loop
+            asyncio.set_event_loop(loop)
+            [mbd.disconnect() for mbd in self.downloaders]
+            loop.run_until_complete(asyncio.wait(tuple([mbd.connect() for mbd in self.downloaders])))
+        tasks = tuple(self.downloaders[ii].download([ff for ff in files[ii::self.async_num]]) for ii in range(self.async_num))
+        loop.run_until_complete(asyncio.wait(tasks))
 
 def parse_training_args(unparsed):
     parser = argparse.ArgumentParser()
@@ -97,7 +135,7 @@ def parse_category_info(class_map, critical_classes, folders):
     return classes, class_indices, train_folders, all_classes
 
 def process_img(img_f, rois, target_shape, augmentation):
-    with  img_f['file_sys'].openbin(img_f['path'], 'rb') as ff:
+    with open(img_f, 'rb') as ff:
         img = imageio.imread(ff)
     img_roi = sel_rois(img, rois)
     scale_fraction = min((float(target_shape[ii]) / img_roi.shape[ii] for ii in range(2)))
@@ -115,9 +153,10 @@ def process_img(img_f, rois, target_shape, augmentation):
 
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, img_files, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32, shuffle=True, max_epoch_samples=np.inf):
+    def __init__(self, img_files, dsconnections, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32, shuffle=True, max_epoch_samples=np.inf, name="Train"):
         'Initialization'
         self.img_files = img_files
+        self.bd = batch_downloader(dsconnections, async_num=2)
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.rois = rois
@@ -132,6 +171,7 @@ class DataGenerator(keras.utils.Sequence):
         self.enc = lambda x: to_categorical([self.label_space.index(xi) for xi in x], num_classes=len(self.label_space))
         self.max_epoch_samples = max_epoch_samples
         self.on_epoch_end()
+        self.name = name
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -145,6 +185,11 @@ class DataGenerator(keras.utils.Sequence):
         if self.shuffle == True:
             np.random.shuffle(self.indices)
         
+    async def run_proc(self, files, loop):
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [loop.run_in_executor(executor, process_img, img_f[2], self.rois, self.target_shape, self.augmentation) for img_f in files]
+            results = await asyncio.gather(*futures)
+        return results
 
     def __data_generation(self, img_files):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
@@ -152,22 +197,31 @@ class DataGenerator(keras.utils.Sequence):
 
         # Generate data
         X = np.zeros((len(img_files), ) + self.target_shape)
-        for ii, img_f in enumerate(img_files):
-            X[ii] = process_img(img_f, self.rois, self.target_shape, self.augmentation)
+        files = [(ff['id'], ff['path'], str(uuid.uuid4()) + os.path.splitext(ff['path'])[-1]) for ff in img_files]
+        for ff in files:
+            if os.path.exists(ff[2]):
+                print(ff[2], 'already exists')
+        self.bd.download_batch(files)
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(asyncio.wait((self.run_proc(files, loop), )))
+        X = np.array(list(results[0])[0].result())
+        
         y = self.enc([img_f['category'] for img_f in img_files])
         return X, y
 
     def __getitem__(self, index):
         'Generate one batch of data'
         self.i = index
+        
         # Generate indexes of the batch
         indices = self.indices[index*self.batch_size:(index+1)*self.batch_size]
-
+        #t0 = time.time(); print(f"Getting {self.name} batch {index} from thread {threading.currentThread().getName()}", indices)
         # Find list of IDs
         img_files_temp = [self.img_files[k] for k in indices]
 
         # Generate data
         X, y = self.__data_generation(img_files_temp)
+        #print(f"Getting {self.name} batch {index} from thread {threading.currentThread().getName()} took {time.time()-t0}")
 
         return X, y
 
