@@ -1,4 +1,5 @@
 import json
+import os
 from .utils import path#, gcs_config_hacks
 import logging
 import requests
@@ -8,6 +9,7 @@ from types import SimpleNamespace
 from json import JSONEncoder
 import tempfile
 from fs import open_fs
+import fs
 
 log = logging.getLogger(__name__)
 
@@ -92,7 +94,8 @@ class CriterionConfig:
         """
 
         gcs_model_path = self.job_dir + "/" + package_path
-        file_io.copy(tmp_package_path, gcs_model_path, overwrite=True)
+        with open_fs(self.job_dir) as gcs_fs:
+            fs.copy.copy_file(os.getcwd(), tmp_package_path, gcs_fs, package_path)
 
         complete_url = self.host_name + self.api_endpoints['complete'] + package_path
         try:

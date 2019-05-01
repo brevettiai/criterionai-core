@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from .path import movedir
+import fs
 import tarfile
 import os
 
@@ -42,7 +43,7 @@ def export_model(keras_model, img_format, input_shape, export_path='tf_export', 
         model_dir=tf_model_path,
         keras_model=keras_model)
 
-    movedir(os.path.join(os.getcwd(), tf_model_path, 'keras'), os.path.join(os.getcwd(), tf_model_path))
+    fs.move.move_dir(os.getcwd(), '/'.join([tf_model_path, 'keras']), os.getcwd(), tf_model_path)
 
     estimator.export_savedmodel(
         export_path,
@@ -54,4 +55,4 @@ def export_model(keras_model, img_format, input_shape, export_path='tf_export', 
     saved_model_tar = os.path.join(export_path_newest, 'saved_model.tar.gz')
     with tarfile.open(saved_model_tar, "w:gz") as tar:
         tar.add(export_path_newest, arcname="saved_model")
-    return saved_model_tar
+    return saved_model_tar.replace(os.sep, '/')

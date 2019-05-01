@@ -1,32 +1,8 @@
-import os
 from fs import open_fs
-from functools import reduce
-import asyncio
-import aioftp
 import mimetypes
 import logging
 
 logging.getLogger('aioftp').setLevel(logging.WARNING)
-
-
-def partition(items, func):
-    return reduce(lambda x, y: x[not func(y)].append(y) or x, items, ([], []))
-
-def gswalk(top):
-    items = file_io.list_directory_v2(top)
-    folders, files = partition(items, lambda x: x.endswith("/"))
-    yield top, folders, files
-    for folder in folders:
-        yield from gswalk(os.path.join(top, folder))
-
-def walk(top):
-    if top.startswith("gs://"):
-        yield from gswalk(top)
-    elif top.startswith("ftp://"):
-        ftp = get_ftp_info(top)
-        return list(asyncio.get_event_loop().run_until_complete(asyncio.wait((_walk_ftp(ftp["host"], ftp["user"], ftp["password"]), )))[0])[0].result()
-    else: 
-        yield from os.walk(top)
 
 def get_ftp_info(connection_string):
     try:
@@ -35,14 +11,6 @@ def get_ftp_info(connection_string):
         return {'host': host, 'user': user, 'password': password}
     except:
         return None
-
-async def _walk_ftp(host, user, password, port=21):
-    files = []
-    async with aioftp.ClientSession(host, port, user, password) as client:
-        for path, info in (await client.list(recursive=True)):
-            if info["type"] == "file":
-                files.append(('/'.join(path.parts[:-1]), '', [path]))
-    return files
 
 def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
@@ -62,10 +30,9 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
     fs = open_fs(dataset["bucket"])
     for root, _, files in fs.walk("/"):
         dir_ = root[:-1] if root.endswith("/") else root
-        category = dir_.rsplit(os.sep, category_depth)
+        category = dir_.rsplit("/", category_depth)
 
         category = category[-1] if category_depth == 1 else category[1:]
-        category = category.strip('/')
 
         category = category_map.get(category, category)
         if force_categories and category not in category_map:
