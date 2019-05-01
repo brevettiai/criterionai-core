@@ -12,32 +12,36 @@ logging.getLogger('aioftp').setLevel(logging.WARNING)
 def partition(items, func):
     return reduce(lambda x, y: x[not func(y)].append(y) or x, items, ([], []))
 
-def walk(top):
+def gswalk(top):
     items = file_io.list_directory_v2(top)
     folders, files = partition(items, lambda x: x.endswith("/"))
     yield top, folders, files
     for folder in folders:
-        yield from walk(os.path.join(top, folder))
+        yield from gswalk(os.path.join(top, folder))
 
-def walk_ftp(host, user, password):
-    return list(asyncio.get_event_loop().run_until_complete(asyncio.wait((_walk_ftp(host, user, password), )))[0])[0].result()
+def walk(top):
+    if top.startswith("gs://"):
+        yield from gswalk(top)
+    elif top.startswith("ftp://"):
+        ftp = get_ftp_info(top)
+        return list(asyncio.get_event_loop().run_until_complete(asyncio.wait((_walk_ftp(ftp["host"], ftp["user"], ftp["password"]), )))[0])[0].result()
+    else: 
+        yield from os.walk(top)
+
+def get_ftp_info(connection_string):
+    try:
+        user, password = connection_string.lstrip('ftp://').split('@')[0].split(':')
+        host = "ftp.criterion.ai"
+        return {'host': host, 'user': user, 'password': password}
+    except:
+        return None
 
 async def _walk_ftp(host, user, password, port=21):
     files = []
     async with aioftp.ClientSession(host, port, user, password) as client:
         for path, info in (await client.list(recursive=True)):
             if info["type"] == "file":
-                files.append(('/'.join(path.parts[:-1]), path))
-    return files
-
-async def get_mp3(host, login, password, port=21):
-    files = []
-    async with aioftp.ClientSession(host, port, login, password) as client:
-        for path, info in (await client.list(recursive=True)):
-            if info["type"] == "file":
-                print("Downloading: ", path)
-                #await client.download(path, "test.heic", write_into=True)
-                files.append(path)
+                files.append(('/'.join(path.parts[:-1]), '', [path]))
     return files
 
 def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
@@ -49,20 +53,19 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
     :param samples: dict of existing samples to extend
     :return: samples dict with new samples on the format {cat1:[samples...], cat2:...]}
     """
-    #dataset["bucket"]
-    user, password = dataset['bucket'].lstrip('ftp://').split('@')[0].split(':')
-    connect_info = {'host': "ftp.criterion.ai", 'user': user, 'password': password}
     
-    file_paths = walk_ftp(connect_info['host'], user, password)
     if samples is None:
         samples = {}
 
     category_map = {} if category_map is None else category_map
 
-    for root, file_name in file_paths:
-        files = [file_name]
-        category = root.rsplit('/', category_depth)
+    fs = open_fs(dataset["bucket"])
+    for root, _, files in fs.walk("/"):
+        dir_ = root[:-1] if root.endswith("/") else root
+        category = dir_.rsplit(os.sep, category_depth)
+
         category = category[-1] if category_depth == 1 else category[1:]
+        category = category.strip('/')
 
         category = category_map.get(category, category)
         if force_categories and category not in category_map:
@@ -76,7 +79,7 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
                 sample["dataset"] = dataset['name']
                 sample["id"] = dataset['id']
                 samples.setdefault(category, []).append(sample)
-    return samples, connect_info
+    return samples, get_ftp_info(dataset["bucket"])
 
 def filter_file_by_ending(ftypes):
     """

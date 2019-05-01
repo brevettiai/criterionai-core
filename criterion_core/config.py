@@ -1,11 +1,11 @@
 import json
-from .utils import path  # , gcs_config_hacks
+from .utils import path#, gcs_config_hacks
 import logging
 import requests
 from itertools import chain
 from collections import defaultdict
 from types import SimpleNamespace
-import os
+from json import JSONEncoder
 import tempfile
 from fs import open_fs
 
@@ -52,34 +52,29 @@ class CriterionConfig:
         
         parameter_path = "/info.json"
 
-        log.info(parameter_path)
+        log.info("Config args found at: '%s'" % parameter_path)
         with job_fs.open(parameter_path, 'r') as fp:
             parameters = json.load(fp)
-
         log.info(parameters)
-        log.info(schema_path)
 
-        log.info("Find schema")
-        log.info(os.path.dirname(os.path.realpath(__file__)))
-
-        log.info(os.getcwd())
         with open(schema_path, 'r') as fp:
             schema = json.load(fp)
 
-        log.info(schema)
-        return CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
+        config = CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
+        log.info(config)
+        return config
 
     def get_facets_folder(self):
         return self.job_dir
 
     def temp_path(self, *paths):
-        return path.join(self._temporary_path, *paths)
+        return path.join(self._temporary_path.name, *paths)
 
     def artifact_path(self, *paths):
         return path.join(self.job_dir, "artifacts", *paths)
 
     def upload_chart(self, name, vegalite_json):
-        charts_url = '{}{}&name={}'.format(self.host_name + self.api_endpoints['charts'] + name)
+        charts_url = '{}{}&name={}'.format(self.host_name, self.api_endpoints['charts'], name)
         try:
             r = requests.post(charts_url, headers={'Content-Type': 'application/json'}, data=vegalite_json)
         except requests.exceptions.HTTPError as e:
@@ -112,7 +107,13 @@ class CriterionConfig:
         self._temporary_path.cleanup()
 
     def __str__(self):
-        raise NotImplementedError
+        return self.ConfigEncoder().encode(self)
+
+    class ConfigEncoder(JSONEncoder):
+        def default(self, o):
+            if isinstance(o, CriterionConfig):
+                return {k: v for k, v in o.__dict__.items() if not k.startswith("_")}
+            return o.__dict__
 
 
 def merge_settings(schema, settings, check_required_fields=True):
