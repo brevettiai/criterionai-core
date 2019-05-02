@@ -3,6 +3,7 @@ import aioftp
 import aiofiles
 import threading
 from threading import current_thread
+from threading import Thread
 
 threadLocal = threading.local()
 
@@ -84,7 +85,24 @@ class batch_downloader():
 
     async def download_batch(self, files, loop):
         q = asyncio.Queue()
-        fill_queue = [asyncio.ensure_future(queue_files(files, q))]
+        fill_queue = asyncio.ensure_future(queue_files(files, q))
         download_files = [asyncio.ensure_future(self.downloaders[ii].download(q)) for ii in range(self.async_num)]
-        await asyncio.gather(*fill_queue)
-        await asyncio.gather(*download_files)
+        await asyncio.gather(fill_queue, *download_files)
+
+class threaded_downloader(Thread):
+    def __init__(self, q, q_done, **kwargs):
+        Thread.__init__(self)
+        self.q = q
+        self.q_done = q_done
+        self.daemon = True
+        self.kwargs = kwargs
+        self.start()
+
+    def run(self):
+        bd = batch_downloader(**self.kwargs)
+        loop = bd.get_loop()
+        while True:
+            files = self.q.get()
+            loop.run_until_complete(asyncio.wait((bd.download_batch([ff[:3] for ff in files], loop),)))
+            self.q_done.put(files)
+            self.q.task_done()

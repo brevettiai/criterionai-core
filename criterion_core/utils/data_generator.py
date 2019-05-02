@@ -14,11 +14,10 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing import image
 import pandas as pd
 import altair as alt
-import asyncio
 import uuid
-from concurrent.futures import ThreadPoolExecutor
+from queue import Queue
 
-from .io_tools import batch_downloader
+from .io_tools import batch_downloader, threaded_downloader
 
 def process_img(img_f, rois, target_shape, augmentation):
     with open(img_f, 'rb') as ff:
@@ -41,8 +40,10 @@ def process_img(img_f, rois, target_shape, augmentation):
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, dsconnections, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32, shuffle=True, max_epoch_samples=np.inf, name="Train"):
         'Initialization'
+        self.q = Queue()
+        self.q_downloaded = Queue()
+        self.download_threads = [threaded_downloader(self.q, self.q_downloaded, ftp_connections=dsconnections, async_num=4) for thr in range(2)]
         self.img_files = img_files
-        self.bd = batch_downloader(dsconnections, async_num=4)
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.rois = rois
@@ -67,45 +68,36 @@ class DataGenerator(keras.utils.Sequence):
     def on_epoch_end(self):
         'Updates indexes after each epoch'
         self.indices = np.arange(len(self.img_files))
-        self.i = 0
         if self.shuffle == True:
             np.random.shuffle(self.indices)
-        
-    async def run_proc(self, files, loop):
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            futures = [loop.run_in_executor(executor, process_img, img_f[2], self.rois, self.target_shape, self.augmentation) for img_f in files]
-            results = await asyncio.gather(*futures)
-        return results
+        # Schedule downloads to queue
 
-    def __data_generation(self, img_files):
+        for index in range(len(self)):
+            # Generate indexes of the batch
+            indices = self.indices[index*self.batch_size:(index+1)*self.batch_size]
+            # Find list of IDs
+            img_files_temp = [self.img_files[k] for k in indices]
+            files = [(ff['id'], ff['path'], str(uuid.uuid4()) + os.path.splitext(ff['path'])[-1], ff) for ff in img_files_temp]
+            self.q.put(files)
+
+    def __data_generation(self):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
-        # Initialization
-        X = np.zeros((len(img_files), ) + self.target_shape)
 
         # Generate data
-        files = [(ff['id'], ff['path'], str(uuid.uuid4()) + os.path.splitext(ff['path'])[-1]) for ff in img_files]
-        for ff in files:
-            if os.path.exists(ff[2]):
-                print(ff[2], 'already exists')
-        loop = self.bd.get_loop()
-        loop.run_until_complete(asyncio.wait((self.bd.download_batch(files, loop),)))
-        results = loop.run_until_complete(asyncio.wait((self.run_proc(files, loop), )))
-        X = np.array(list(results[0])[0].result())
-        
-        y = self.enc([img_f['category'] for img_f in img_files])
+        files = self.q_downloaded.get()
+        # Initialization
+        X = np.zeros((len(files), ) + self.target_shape)
+        for ii, img_f in enumerate(files):
+            X[ii] = process_img(img_f[2], self.rois, self.target_shape, self.augmentation)
+            os.remove(img_f[2])
+        y = self.enc([img_f[3]['category'] for img_f in files])
+        self.q_downloaded.task_done()
         return X, y
 
     def __getitem__(self, index):
         'Generate one batch of data'
-        self.i = index
-        
-        # Generate indexes of the batch
-        indices = self.indices[index*self.batch_size:(index+1)*self.batch_size]
-        # Find list of IDs
-        img_files_temp = [self.img_files[k] for k in indices]
-
         # Generate data
-        X, y = self.__data_generation(img_files_temp)
+        X, y = self.__data_generation()
         return X, y
 
 def parse_augmentation_args(unparsed):
