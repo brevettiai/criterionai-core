@@ -10,7 +10,8 @@ REQUIRED_PACKAGES = [
     'Pillow>=6.0.0',
     'fs==2.4.4',
     'fs-gcsfs==0.4.1',
-    'aioftp==0.10.1'
+    'aioftp==0.10.1',
+    'aiofiles==0.4.0'
 ]
 
 setup(
