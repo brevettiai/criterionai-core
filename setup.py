@@ -9,7 +9,8 @@ REQUIRED_PACKAGES = [
     'imageio>=2.5.0',
     'Pillow>=6.0.0',
     'fs==2.4.4',
-    'fs-gcsfs==0.4.1'
+    'fs-gcsfs==0.4.1',
+    'aioftp==0.10.1'
 ]
 
 setup(
