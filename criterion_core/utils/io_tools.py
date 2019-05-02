@@ -13,10 +13,10 @@ class mini_batch_downloader:
         self.id = id
 
     def get_sessions(self):
-        return getattr(threadLocal, f'sessions_{self.id}', {})
+        return getattr(threadLocal, 'sessions_{}'.format(self.id), {})
     
     def set_sessions(self, sessions):
-        setattr(threadLocal, f'sessions_{self.id}', sessions)
+        setattr(threadLocal, 'sessions_{}'.format(self.id), sessions)
 
     async def connect(self):
         self.disconnect()
