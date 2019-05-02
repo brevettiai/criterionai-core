@@ -43,9 +43,13 @@ class mini_batch_downloader:
             client.close()
         self.set_sessions({})
 
-    async def download(self, files):
+    async def download(self, q):
         sessions = self.get_sessions()
-        for ftp_id, path, outp in files:
+        while True:
+            ftp_id, path, outp = await q.get()
+            if ftp_id is None:
+                await q.put((ftp_id, path, outp))
+                break
             for download_attempt in range(10):
                 try:
                     async with aiofiles.open(outp, 'wb') as out_file, sessions[ftp_id].download_stream(path) as stream:
@@ -54,14 +58,21 @@ class mini_batch_downloader:
                 except aioftp.errors.StatusCodeError:
                     pass
                 else:
-                    break            
+                    break
+            q.task_done()
+
+async def queue_files(files, q):
+    for ff in files:
+        await q.put(ff)
+ 
+    await q.put((None, None, None))
 
 class batch_downloader():
     def __init__(self, ftp_connections, async_num):
         self.async_num = async_num
         self.downloaders = [mini_batch_downloader(ftp_connections, ii) for ii in range(async_num)]
 
-    def download_batch(self, files):
+    def get_loop(self):
         loop = getattr(threadLocal, 'loop', None)
         if loop is None:
             loop = asyncio.new_event_loop()
@@ -69,5 +80,11 @@ class batch_downloader():
             asyncio.set_event_loop(loop)
             [mbd.disconnect() for mbd in self.downloaders]
             loop.run_until_complete(asyncio.wait(tuple([mbd.connect() for mbd in self.downloaders])))
-        tasks = tuple(self.downloaders[ii].download([ff for ff in files[ii::self.async_num]]) for ii in range(self.async_num))
-        loop.run_until_complete(asyncio.wait(tasks))
+        return loop
+
+    async def download_batch(self, files, loop):
+        q = asyncio.Queue()
+        fill_queue = [asyncio.ensure_future(queue_files(files, q))]
+        download_files = [asyncio.ensure_future(self.downloaders[ii].download(q)) for ii in range(self.async_num)]
+        await asyncio.gather(*fill_queue)
+        await asyncio.gather(*download_files)

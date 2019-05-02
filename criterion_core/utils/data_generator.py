@@ -42,7 +42,7 @@ class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, dsconnections, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32, shuffle=True, max_epoch_samples=np.inf, name="Train"):
         'Initialization'
         self.img_files = img_files
-        self.bd = batch_downloader(dsconnections, async_num=2)
+        self.bd = batch_downloader(dsconnections, async_num=4)
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.rois = rois
@@ -72,7 +72,7 @@ class DataGenerator(keras.utils.Sequence):
             np.random.shuffle(self.indices)
         
     async def run_proc(self, files, loop):
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             futures = [loop.run_in_executor(executor, process_img, img_f[2], self.rois, self.target_shape, self.augmentation) for img_f in files]
             results = await asyncio.gather(*futures)
         return results
@@ -87,8 +87,8 @@ class DataGenerator(keras.utils.Sequence):
         for ff in files:
             if os.path.exists(ff[2]):
                 print(ff[2], 'already exists')
-        self.bd.download_batch(files)
-        loop = asyncio.get_event_loop()
+        loop = self.bd.get_loop()
+        loop.run_until_complete(asyncio.wait((self.bd.download_batch(files, loop),)))
         results = loop.run_until_complete(asyncio.wait((self.run_proc(files, loop), )))
         X = np.array(list(results[0])[0].result())
         
