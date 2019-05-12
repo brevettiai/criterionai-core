@@ -16,8 +16,8 @@ import pandas as pd
 import altair as alt
 import uuid
 from queue import Queue
-
-from .io_tools import batch_downloader, threaded_downloader
+import multiprocessing
+from .aio_tools import threaded_downloader
 
 def process_img(img_f, rois, target_shape, augmentation):
     with open(img_f, 'rb') as ff:
@@ -40,9 +40,9 @@ def process_img(img_f, rois, target_shape, augmentation):
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, dsconnections, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32, shuffle=True, max_epoch_samples=np.inf, name="Train"):
         'Initialization'
-        self.q = Queue()
-        self.q_downloaded = Queue()
-        self.download_threads = [threaded_downloader(self.q, self.q_downloaded, ftp_connections=dsconnections, async_num=4) for thr in range(2)]
+        self.q = multiprocessing.JoinableQueue()
+        self.q_downloaded = multiprocessing.JoinableQueue()
+        self.download_threads = [threaded_downloader(self.q, self.q_downloaded, ftp_connections=dsconnections, async_num=4) for thr in range(1)]
         self.img_files = img_files
         self.batch_size = batch_size
         self.shuffle = shuffle

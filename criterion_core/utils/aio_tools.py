@@ -1,12 +1,16 @@
 import asyncio
-import aioftp
+import aiohttp
+from gcloud.aio.storage import Storage
 import aiofiles
+import aiohttp
 import threading
 from threading import current_thread
 from threading import Thread
 import time
 import sys
 import multiprocessing
+from google.cloud import storage
+import google.auth
 
 threadLocal = threading.local()
 
@@ -102,7 +106,7 @@ async def queue_files(files, q):
 class batch_downloader():
     def __init__(self, ftp_connections, async_num):
         self.async_num = async_num
-        self.downloaders = [mini_batch_downloader(ftp_connections, ii) for ii in range(async_num)]
+        #self.downloaders = [mini_batch_downloader(ftp_connections, ii) for ii in range(async_num)]
         print("Creating downloaders in thread ", threading.currentThread().getName())
     def get_loop(self):
         loop = getattr(threadLocal, 'loop', None)
@@ -117,6 +121,10 @@ class batch_downloader():
     async def download_batch(self, files, loop):
         q = asyncio.Queue()
         fill_queue = asyncio.ensure_future(queue_files(files, q))
+        self.credentials, self.project = google.auth.default()
+        async with aiohttp.ClientSession() as session:
+            storage = Storage(service_file=self.credentials, session=session)
+            storage.download(bucket_name, object_name)
         download_files = [asyncio.ensure_future(self.downloaders[ii].download(q)) for ii in range(self.async_num)]
         await asyncio.gather(fill_queue, *download_files)
 
@@ -136,3 +144,32 @@ class threaded_downloader(multiprocessing.Process):
             loop.run_until_complete(asyncio.wait((bd.download_batch([ff[:3] for ff in files], loop),)))
             self.q_done.put(files)
             self.q.task_done()
+
+
+class download_f():
+    def __init__(self, ftp_connections, async_num):
+        self.async_num = async_num
+        #self.downloaders = [mini_batch_downloader(ftp_connections, ii) for ii in range(async_num)]
+
+        print("Creating downloaders in thread ", threading.currentThread().getName())
+    def get_loop(self):
+        loop = getattr(threadLocal, 'loop', None)
+        if loop is None:
+            loop = asyncio.new_event_loop()
+            threadLocal.loop = loop
+            asyncio.set_event_loop(loop)
+            [mbd.disconnect() for mbd in self.downloaders]
+            loop.run_until_complete(asyncio.wait(tuple([mbd.connect() for mbd in self.downloaders])))
+        return loop
+
+def download_batch(bucket_name, object_name):
+    loop = asyncio.get_event_loop()
+    out = loop.run_until_complete(asyncio.wait(async_download(bucket_name, object_name)))
+    return out
+
+async def async_download(bucket_name, object_name):
+    credentials, project = google.auth.default()
+    async with aiohttp.ClientSession() as session:
+        storage = Storage(service_file=credentials, session=session)
+        res = await storage.download(bucket_name, object_name)
+    return res
