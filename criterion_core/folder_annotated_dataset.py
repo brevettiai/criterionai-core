@@ -1,4 +1,4 @@
-from fs import open_fs
+from .utils import gcs_io
 import mimetypes
 import logging
 
@@ -27,8 +27,7 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
 
     category_map = {} if category_map is None else category_map
 
-    fs = open_fs(dataset["bucket"])
-    for root, _, files in fs.walk("/"):
+    for root, _, files in gcs_io.walk(dataset["bucket"]):
         dir_ = root[:-1] if root.endswith("/") else root
         category = dir_.rsplit("/", category_depth)
 
@@ -39,14 +38,14 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
             continue
 
         for file in files:
-            path = '/'.join([root, file.name])
+            path = '/'.join([root, file])
             sample = dict(path=path) if filter is None else filter(path, category)
 
-            if not sample is None and len(category)>0 and mimetypes.guess_type(file.name)[0].startswith('image/'):
+            if sample is not None and len(category)>0 and mimetypes.guess_type(file)[0].startswith('image/'):
                 sample["dataset"] = dataset['name']
                 sample["id"] = dataset['id']
                 samples.setdefault(category, []).append(sample)
-    return samples, get_ftp_info(dataset["bucket"])
+    return samples
 
 def filter_file_by_ending(ftypes):
     """
@@ -75,9 +74,9 @@ def load_image_datasets(datasets, class_map=None, force_categories=False):
     connections_ = {}
 
     for d in datasets:
-        datasets_[d['id']], connections_[d['id']] = load_dataset(d,
+        datasets_[d['id']] = load_dataset(d,
                                       d['name'],
                                      filter=filter_file_by_ending({'bmp', 'jpeg', 'jpg', 'png'}),
                                      category_map=class_map)
 
-    return datasets_, connections_
+    return datasets_
