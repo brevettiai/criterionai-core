@@ -15,6 +15,7 @@ def gcs_operation(bucket_name, operation_name, service_file: str, *args, **kwarg
 
     async def async_operation():
         conn = aiohttp.TCPConnector(limit_per_host=30)
+        print("async_operation: ", bucket_name, operation_name, service_file, args, kwargs)
         async with aiohttp.ClientSession(connector=conn) as session:
             st = Storage(service_file=service_file, session=session)
             gcs_method = getattr(st, operation_name)
