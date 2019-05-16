@@ -6,12 +6,13 @@ REQUIRED_PACKAGES = [
     'altair>=2.4.1',
     'pandas>=0.24',
     'requests>=2.21.0',
-    'imageio>=2.5.0',
-    'Pillow>=6.0.0',
-    'fs==2.4.4',
-    'fs-gcsfs==0.4.1',
-    'aioftp==0.10.1',
-    'aiofiles==0.4.0'
+    'opencv-python>=4.1.0',
+    'altair @ git+https://github.com/criterion-ai/altair.git/#egg=master',
+    'aiofiles==0.4.0',
+    'aiohttp==2.3.10',
+    'opencv-python',
+    'gcloud-aio-auth @ git+https://github.com/elempollon/gcloud-aio.git/#egg=gcloud-aio-auth-2.0.1&subdirectory=auth',
+    'gcloud-aio-storage @ git+https://github.com/elempollon/gcloud-aio.git/#egg=gcloud-aio-storage-4.1.0&subdirectory=storage',
 ]
 
 setup(
