@@ -49,15 +49,26 @@ def walk(bucket_name, content_filter: str = "image",
 
 
 class GcsBatchDownloader(multiprocessing.Process):
-    def __init__(self, q_in, q_done, service_file="urlsigner.json"):
+    def __init__(self, service_file="urlsigner.json", max_queue_size=10):
         multiprocessing.Process.__init__(self)
         if not os.path.exists(service_file):
             file_io.copy("gs://security.criterion.ai/urlsigner.json", service_file)
         self.service_file = service_file
-        self.q_in = q_in
-        self.q_done = q_done
+        self.q = multiprocessing.JoinableQueue()
+        self.q_downloaded = multiprocessing.JoinableQueue(maxsize=max_queue_size)
         self.loop = None
+        self.daemon = True
         self.start()
+
+
+    def update_queue(self, img_files, batch_size, num_batches, indices):
+        self.reset_queues()
+        for index in range(num_batches):
+            # Generate indexes of the batch
+            batch_indices = indices[index*batch_size:(index+1)*batch_size]
+            # Find list of IDs
+            img_files_batch = [img_files[k] for k in batch_indices]
+            self.q.put(img_files_batch)
 
     @staticmethod
     async def download_file(bucket_name, blob, st):
@@ -76,12 +87,12 @@ class GcsBatchDownloader(multiprocessing.Process):
             ii = 0
             while True:
                 ii += 1
-                blobs = self.q_in.get()
+                blobs = self.q.get()
                 futures = [self.download_file(blob['bucket'], blob['path'], st) for blob in blobs]
                 buffers = await asyncio.gather(*futures)
-                self.q_done.put((buffers, [blob['category'] for blob in blobs]))
-                self.q_in.task_done()
-                self.q_in.put(blobs) # Adding batch to queue again, if multiple querys on "same" batch
+                self.q_downloaded.put((buffers, [blob['category'] for blob in blobs]))
+                self.q.task_done()
+                self.q.put(blobs) # Adding batch to queue again, if multiple querys on "same" batch
 
     @property
     def loop(self):
@@ -101,14 +112,19 @@ class GcsBatchDownloader(multiprocessing.Process):
     def reset_queues(self):
         while True:
             try:
-                self.q_in.get_nowait()
+                self.q.get_nowait()
             except queue.Empty:
                 break
         while True:
             try:
-                self.q_done.get_nowait()
+                self.q_downloaded.get_nowait()
             except queue.Empty:
                 break
+
+    def cancel(self):
+        self.reset_queues()
+        self.q.cancel_join_thread()
+        self.q_downloaded.cancel_join_thread()
 
     def run(self):
         self.loop.run_until_complete(asyncio.wait((self.download_loop(),)))

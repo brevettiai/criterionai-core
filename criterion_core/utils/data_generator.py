@@ -6,19 +6,18 @@ import cv2
 from tensorflow import keras
 from tensorflow.keras.utils import to_categorical
 
-import multiprocessing
 from .gcs_io import GcsBatchDownloader
 from . import image_proc
 
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
-                 shuffle=True, max_epoch_samples=np.inf, name="Train", max_queue_size=10,
+                 shuffle=True, max_epoch_samples=np.inf, name="Train",
                  service_file=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", 'urlsigner.json')):
         'Initialization'
-        self.q = multiprocessing.JoinableQueue()
-        self.q_downloaded = multiprocessing.JoinableQueue(maxsize=max_queue_size)
-        self.download_process = GcsBatchDownloader(self.q, self.q_downloaded, service_file=service_file)
+        self.service_file = service_file
+        self.download_process = None
+
         self.img_files = img_files
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -33,7 +32,6 @@ class DataGenerator(keras.utils.Sequence):
         # one hot encode according to indices given in classes, or sorted list if classes are not specified
         self.enc = lambda x: to_categorical([self.label_space.index(xi) for xi in x], num_classes=len(self.label_space))
         self.max_epoch_samples = max_epoch_samples
-        self.on_epoch_end()
         self.name = name
 
     def __len__(self):
@@ -47,19 +45,21 @@ class DataGenerator(keras.utils.Sequence):
         if self.shuffle:
             np.random.shuffle(self.indices)
         # Schedule downloads to queue
-        self.download_process.reset_queues()
-        for index in range(len(self)):
-            # Generate indexes of the batch
-            indices = self.indices[index*self.batch_size:(index+1)*self.batch_size]
-            # Find list of IDs
-            img_files_batch = [self.img_files[k] for k in indices]
-            self.q.put(img_files_batch)
+        self.download_process.update_queue(self.img_files, self.batch_size, len(self), self.indices)
+
+    def __enter__(self):
+        self.download_process = GcsBatchDownloader(service_file=self.service_file)
+        self.on_epoch_end()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.download_process.cancel()
 
     def __data_generation(self):
-        'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+        ''' Generates data containing batch_size samples '''
 
         # Generate data
-        buffers, categories = self.q_downloaded.get()
+        buffers, categories = self.download_process.q_downloaded.get()
         # Initialization
         X = np.zeros((len(buffers), ) + self.target_shape)
         for ii, buffer in enumerate(buffers):
@@ -70,7 +70,7 @@ class DataGenerator(keras.utils.Sequence):
             X[ii] = img_t[0]
 
         y = self.enc(categories)
-        self.q_downloaded.task_done()
+        self.download_process.q_downloaded.task_done()
         return X, y
 
     def __getitem__(self, index):
