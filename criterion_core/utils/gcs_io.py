@@ -10,9 +10,6 @@ from tensorflow.python.lib.io import file_io
 
 def gcs_operation(bucket_name, operation_name, service_file: str, *args, **kwargs):
     bucket_name = bucket_name.replace('gs://', '').replace('/', '')
-    if not os.path.exists(service_file):
-        file_io.copy("gs://security.criterion.ai/urlsigner.json", service_file)
-    print("async_operation: ", bucket_name, operation_name, service_file, args, kwargs)
     async def async_operation():
         conn = aiohttp.TCPConnector(limit_per_host=30)
         async with aiohttp.ClientSession(connector=conn) as session:
@@ -51,8 +48,6 @@ def walk(bucket_name, content_filter: str = "image",
 class GcsBatchDownloader(multiprocessing.Process):
     def __init__(self, service_file="urlsigner.json", max_queue_size=10):
         multiprocessing.Process.__init__(self)
-        if not os.path.exists(service_file):
-            file_io.copy("gs://security.criterion.ai/urlsigner.json", service_file)
         self.service_file = service_file
         self.q = multiprocessing.JoinableQueue()
         self.q_downloaded = multiprocessing.JoinableQueue(maxsize=max_queue_size)
@@ -84,9 +79,7 @@ class GcsBatchDownloader(multiprocessing.Process):
         conn = aiohttp.TCPConnector(limit_per_host=30)
         async with aiohttp.ClientSession(connector=conn) as session:
             st = Storage(service_file=self.service_file, session=session)
-            ii = 0
             while True:
-                ii += 1
                 blobs = self.q.get()
                 futures = [self.download_file(blob['bucket'], blob['path'], st) for blob in blobs]
                 buffers = await asyncio.gather(*futures)
