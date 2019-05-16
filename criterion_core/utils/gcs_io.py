@@ -38,7 +38,7 @@ def gcs_read(bucket_name, blob,
 def gcs_walk(bucket_name, content_filter: str = "image",
              service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'urlsigner.json')):
     blobs = gcs_operation(bucket_name, "list_objects", service_file)
-    output = [blob for blob in blobs['items'] if content_filter in blob["contentType"]]
+    output = [blob for blob in blobs['items'] if content_filter in blob.get("contentType", '')]
     return output
 
 
@@ -49,7 +49,7 @@ def walk(bucket_name, content_filter: str = "image",
 
 
 class GcsBatchDownloader(multiprocessing.Process):
-    def __init__(self, q_in, q_done, service_file="urlsigner.json", **kwargs):
+    def __init__(self, q_in, q_done, service_file="urlsigner.json"):
         multiprocessing.Process.__init__(self)
         if not os.path.exists(service_file):
             file_io.copy("gs://security.criterion.ai/urlsigner.json", service_file)
@@ -57,7 +57,6 @@ class GcsBatchDownloader(multiprocessing.Process):
         self.q_in = q_in
         self.q_done = q_done
         self.loop = None
-        self.kwargs = kwargs
         self.start()
 
     @staticmethod
@@ -74,12 +73,15 @@ class GcsBatchDownloader(multiprocessing.Process):
         conn = aiohttp.TCPConnector(limit_per_host=30)
         async with aiohttp.ClientSession(connector=conn) as session:
             st = Storage(service_file=self.service_file, session=session)
+            ii = 0
             while True:
+                ii += 1
                 blobs = self.q_in.get()
-                futures = [GcsDownloader.download_file(blob['bucket'], blob['name'], st) for blob in blobs]
+                futures = [self.download_file(blob['bucket'], blob['path'], st) for blob in blobs]
                 buffers = await asyncio.gather(*futures)
-                self.q_done.put((buffers, [blob['class'] for blob in blobs]))
+                self.q_done.put((buffers, [blob['category'] for blob in blobs]))
                 self.q_in.task_done()
+                self.q_in.put(blobs) # Adding batch to queue again, if multiple querys on "same" batch
 
     @property
     def loop(self):
@@ -110,4 +112,3 @@ class GcsBatchDownloader(multiprocessing.Process):
 
     def run(self):
         self.loop.run_until_complete(asyncio.wait((self.download_loop(),)))
-

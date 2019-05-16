@@ -1,6 +1,5 @@
 import json
-import os
-from .utils import path#, gcs_config_hacks
+from .utils import path
 import logging
 import requests
 from itertools import chain

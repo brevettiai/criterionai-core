@@ -4,14 +4,6 @@ import logging
 
 logging.getLogger('aioftp').setLevel(logging.WARNING)
 
-def get_ftp_info(connection_string):
-    try:
-        user, password = connection_string.lstrip('ftp://').split('@')[0].split(':')
-        host = "ftp.criterion.ai"
-        return {'host': host, 'user': user, 'password': password}
-    except:
-        return None
-
 def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
     Load a dataset using the last n directories as category
@@ -43,6 +35,7 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
 
             if sample is not None and len(category)>0 and mimetypes.guess_type(file)[0].startswith('image/'):
                 sample["dataset"] = dataset['name']
+                sample["bucket"] = dataset['bucket']
                 sample["id"] = dataset['id']
                 samples.setdefault(category, []).append(sample)
     return samples
