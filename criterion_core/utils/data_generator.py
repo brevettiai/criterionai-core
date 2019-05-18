@@ -6,18 +6,14 @@ import cv2
 from tensorflow import keras
 from tensorflow.keras.utils import to_categorical
 
-from .gcs_io import GcsBatchDownloader
+from . import gcs_io # import GcsBatchDownloader
 from . import image_proc
 
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
-                 shuffle=True, max_epoch_samples=np.inf, name="Train",
-                 service_file=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", 'urlsigner.json')):
+                 shuffle=True, max_epoch_samples=np.inf, name="Train"):
         'Initialization'
-        self.service_file = service_file
-        self.download_process = None
-
         self.img_files = img_files
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -30,11 +26,13 @@ class DataGenerator(keras.utils.Sequence):
         else:
             self.label_space = classes
         # one hot encode according to indices given in classes, or sorted list if classes are not specified
-        self.enc = lambda x: to_categorical([self.label_space.index(xi) for xi in x], num_classes=len(self.label_space))
+        self.enc = self.label_encoder
         self.max_epoch_samples = max_epoch_samples
         self.name = name
-        self.download_process = GcsBatchDownloader(service_file=self.service_file)
         self.on_epoch_end()
+
+    def label_encoder(self, x):
+        return to_categorical([self.label_space.index(xi) for xi in x], num_classes=len(self.label_space))
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -46,19 +44,13 @@ class DataGenerator(keras.utils.Sequence):
         self.indices = np.arange(len(self.img_files))
         if self.shuffle:
             np.random.shuffle(self.indices)
-        # Schedule downloads to queue
-        self.download_process.update_queue(self.img_files, self.batch_size, len(self), self.indices)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
 
     def __getitem__(self, index):
         'Generate one batch of data'
         # Generate data
-        buffers, categories = self.download_process.q_downloaded.get()
+        batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
+        img_files_batch = [self.img_files[k] for k in batch_indices]
+        buffers, categories = gcs_io.download_batch(img_files_batch)
         # Initialization
         X = np.zeros((len(buffers), ) + self.target_shape)
         for ii, buffer in enumerate(buffers):
