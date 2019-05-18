@@ -45,11 +45,8 @@ class DataGenerator(keras.utils.Sequence):
         if self.shuffle:
             np.random.shuffle(self.indices)
 
-    def __getitem__(self, index):
-        'Generate one batch of data'
-        # Generate data
-        batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
-        img_files_batch = [self.img_files[k] for k in batch_indices]
+    def __data_generation(self, img_files_batch):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         buffers, categories = gcs_io.download_batch(img_files_batch)
         # Initialization
         X = np.zeros((len(buffers), ) + self.target_shape)
@@ -61,4 +58,11 @@ class DataGenerator(keras.utils.Sequence):
             X[ii] = img_t[0]
 
         y = self.enc(categories)
+        return X, y
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
+        img_files_batch = [self.img_files[k] for k in batch_indices]
+        X, y = self.__data_generation(img_files_batch)
         return X, y

@@ -37,19 +37,19 @@ def _get_gcs_from_path(blob_path):
 
 
 def gcs_write(blob_path, content,
-              service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'urlsigner.json')):
+              service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     bucket_name, blob  = _get_gcs_from_path(blob_path)
     _gcs_operation(bucket_name, "upload", service_file, object_name=blob, file_data=content)
 
 
 def gcs_read(blob_path,
-             service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'urlsigner.json')):
+             service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     bucket_name, blob  = _get_gcs_from_path(blob_path)
     return _gcs_operation(bucket_name, "download", service_file, object_name=blob)
 
 
 def gcs_walk(folder_path, content_filter: str = "image",
-             service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'urlsigner.json')):
+             service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     bucket_name, blob = _get_gcs_from_path(folder_path)
     assert (len(blob) == 0), "Only walk bucket root is support: use parameter content_filter for filtering instead"
     blobs = _gcs_operation(bucket_name, "list_objects", service_file)
