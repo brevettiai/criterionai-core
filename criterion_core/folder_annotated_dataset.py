@@ -63,7 +63,6 @@ def load_image_datasets(datasets, class_map=None, force_categories=False):
     :return:
     """
     datasets_ = {}
-    connections_ = {}
 
     for d in datasets:
         datasets_[d['id']] = load_dataset(d,

@@ -37,24 +37,31 @@ def _get_gcs_from_path(blob_path):
 
 
 def gcs_write(blob_path, content,
-              service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
+              service_file: str=os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     bucket_name, blob  = _get_gcs_from_path(blob_path)
     _gcs_operation(bucket_name, "upload", service_file, object_name=blob, file_data=content)
 
 
-def gcs_read(blob_path,
-             service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
+def gcs_read(blob_path, params=None, service_file: str=os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     bucket_name, blob  = _get_gcs_from_path(blob_path)
-    return _gcs_operation(bucket_name, "download", service_file, object_name=blob)
+    return _gcs_operation(bucket_name, "download", service_file, object_name=blob, params=params)
 
 
 def gcs_walk(folder_path, content_filter: str = "image",
              service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     bucket_name, blob = _get_gcs_from_path(folder_path)
     assert (len(blob) == 0), "Only walk bucket root is support: use parameter content_filter for filtering instead"
-    blobs = _gcs_operation(bucket_name, "list_objects", service_file)
-    output = [blob for blob in blobs['items'] if content_filter in blob.get("contentType", '')]
-    yield from [(path.join("gs://", bucket_name, ff[0]), '', [ff[1]]) for ff in [ff["name"].rsplit("/", 1) for ff in output]]
+    outputs = []
+    params = None
+    while True:
+        blobs = _gcs_operation(bucket_name, "list_objects", service_file, params=params)
+        outputs.append([blob for blob in blobs['items'] if content_filter in blob.get("contentType", '')])
+        if "nextPageToken" in blobs:
+            params = dict(pageToken=blobs["nextPageToken"])
+            continue
+        else:
+            break
+    yield from [(path.join("gs://", bucket_name, ff[0]), '', [ff[1]]) for ff in [ff["name"].rsplit("/", 1) for output in outputs for ff in output]]
 
 
 async def download_file(file_path, st):

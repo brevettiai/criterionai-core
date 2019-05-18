@@ -10,9 +10,11 @@ from . import io_tools
 from . import image_proc
 
 
+COLOR_MODE = {1:cv2.IMREAD_GRAYSCALE,
+              3:cv2.IMREAD_COLOR}
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
-                 shuffle=True, max_epoch_samples=np.inf, name="Train"):
+                 shuffle=True, max_epoch_samples=np.inf):
         'Initialization'
         self.img_files = img_files
         self.batch_size = batch_size
@@ -27,8 +29,8 @@ class DataGenerator(keras.utils.Sequence):
             self.label_space = classes
         # one hot encode according to indices given in classes, or sorted list if classes are not specified
         self.enc = self.label_encoder
+        self.color_mode = COLOR_MODE[target_shape[2]]
         self.max_epoch_samples = max_epoch_samples
-        self.name = name
         self.on_epoch_end()
 
     def label_encoder(self, x):
@@ -51,7 +53,9 @@ class DataGenerator(keras.utils.Sequence):
         # Initialization
         X = np.zeros((len(buffers), ) + self.target_shape)
         for ii, buffer in enumerate(buffers):
-            img = cv2.imdecode(np.frombuffer(buffer, np.uint8), flags=cv2.IMREAD_GRAYSCALE)
+            img = cv2.imdecode(np.frombuffer(buffer, np.uint8), flags=self.color_mode)
+            if self.color_mode == cv2.IMREAD_COLOR:
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             aug = image_proc.random_affine_transform(self.target_shape, self.augmentation)
             img_t = image_proc.apply_transforms([img], aug, self.t_forms, self.target_shape)
 
