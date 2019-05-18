@@ -6,7 +6,7 @@ import cv2
 from tensorflow import keras
 from tensorflow.keras.utils import to_categorical
 
-from . import gcs_io # import GcsBatchDownloader
+from . import io_tools
 from . import image_proc
 
 
@@ -47,7 +47,7 @@ class DataGenerator(keras.utils.Sequence):
 
     def __data_generation(self, img_files_batch):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
-        buffers, categories = gcs_io.download_batch(img_files_batch)
+        buffers, categories = io_tools.download_batch(img_files_batch)
         # Initialization
         X = np.zeros((len(buffers), ) + self.target_shape)
         for ii, buffer in enumerate(buffers):

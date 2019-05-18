@@ -1,8 +1,6 @@
 from .utils import io_tools
 import mimetypes
-import logging
-
-logging.getLogger('aioftp').setLevel(logging.WARNING)
+import os
 
 def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
@@ -19,9 +17,11 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
 
     category_map = {} if category_map is None else category_map
 
+    sep_ = "/" if "://" in dataset["bucket"] else os.path.sep
+
     for root, _, files in io_tools.walk(dataset["bucket"]):
-        dir_ = root[:-1] if root.endswith("/") else root
-        category = dir_.rsplit("/", category_depth)
+        dir_ = root[:-1] if root.endswith(sep_) else root
+        category = dir_.rsplit(sep_, category_depth)
 
         category = category[-1] if category_depth == 1 else category[1:]
 
@@ -30,7 +30,7 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
             continue
 
         for file in files:
-            path = '/'.join([root, file])
+            path = sep_.join([root, file])
             sample = dict(path=path) if filter is None else filter(path, category)
 
             if sample is not None and len(category)>0 and mimetypes.guess_type(file)[0].startswith('image/'):
