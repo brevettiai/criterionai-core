@@ -33,6 +33,8 @@ class DataGenerator(keras.utils.Sequence):
         self.enc = lambda x: to_categorical([self.label_space.index(xi) for xi in x], num_classes=len(self.label_space))
         self.max_epoch_samples = max_epoch_samples
         self.name = name
+        self.download_process = GcsBatchDownloader(service_file=self.service_file)
+        self.on_epoch_end()
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -48,16 +50,13 @@ class DataGenerator(keras.utils.Sequence):
         self.download_process.update_queue(self.img_files, self.batch_size, len(self), self.indices)
 
     def __enter__(self):
-        self.download_process = GcsBatchDownloader(service_file=self.service_file)
-        self.on_epoch_end()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.download_process.cancel()
+        pass
 
-    def __data_generation(self):
-        ''' Generates data containing batch_size samples '''
-
+    def __getitem__(self, index):
+        'Generate one batch of data'
         # Generate data
         buffers, categories = self.download_process.q_downloaded.get()
         # Initialization
@@ -70,10 +69,4 @@ class DataGenerator(keras.utils.Sequence):
             X[ii] = img_t[0]
 
         y = self.enc(categories)
-        self.download_process.q_downloaded.task_done()
-        return X, y
-
-    def __getitem__(self, index):
-        'Generate one batch of data'
-        X, y = self.__data_generation()
         return X, y

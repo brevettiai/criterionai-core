@@ -1,3 +1,4 @@
+import os
 import asyncio
 import aioftp
 import aiofiles
@@ -7,6 +8,7 @@ from threading import Thread
 import time
 import sys
 import multiprocessing
+from . import gcs_io, path
 
 threadLocal = threading.local()
 
@@ -120,6 +122,7 @@ class batch_downloader():
         download_files = [asyncio.ensure_future(self.downloaders[ii].download(q)) for ii in range(self.async_num)]
         await asyncio.gather(fill_queue, *download_files)
 
+
 class threaded_downloader(multiprocessing.Process):
     def __init__(self, q, q_done, **kwargs):
         multiprocessing.Process.__init__(self)
@@ -136,3 +139,40 @@ class threaded_downloader(multiprocessing.Process):
             loop.run_until_complete(asyncio.wait((bd.download_batch([ff[:3] for ff in files], loop),)))
             self.q_done.put(files)
             self.q.task_done()
+
+
+def read_file(file_path):
+    if "gs://" in file_path:
+        return gcs_io.gcs_read(file_path)
+
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as fp:
+            output = fp.read()
+        return output
+
+
+def write_file(file_path, content):
+    if "gs://" in file_path:
+        return gcs_io.gcs_write(file_path, content)
+
+    if os.path.exists(os.path.dirname(os.path.abspath(file_path))):
+        if isinstance(content, (bytes, bytearray)):
+            with open(file_path, 'wb') as fp:
+                output = fp.write(content)
+        else:
+            with open(file_path, 'w') as fp:
+                output = fp.write(content)
+        return output
+
+def make_dirs(folder_path):
+    if "gs://" in folder_path:
+        return gcs_io.gcs_write(path.join(folder_path, ''), '')
+
+    return os.makedirs(folder_path, exist_ok=True)
+
+def walk(folder_path):
+    if "gs://" in folder_path:
+        return gcs_io.gcs_walk(folder_path)
+
+    if os.path.exists(folder_path):
+        return os.path.walk(folder_path)

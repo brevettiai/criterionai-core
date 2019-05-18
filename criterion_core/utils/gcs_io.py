@@ -6,10 +6,10 @@ import asyncio
 import aiohttp
 from gcloud.aio.storage import Storage
 from tensorflow.python.lib.io import file_io
+from . import path
 
 
-def gcs_operation(bucket_name, operation_name, service_file: str, *args, **kwargs):
-    bucket_name = bucket_name.replace('gs://', '').replace('/', '')
+def _gcs_operation(bucket_name, operation_name, service_file: str, *args, **kwargs):
     async def async_operation():
         conn = aiohttp.TCPConnector(limit_per_host=30)
         async with aiohttp.ClientSession(connector=conn) as session:
@@ -22,39 +22,42 @@ def gcs_operation(bucket_name, operation_name, service_file: str, *args, **kwarg
     return output
 
 
-def gcs_write(bucket_name, blob, content,
+def _get_gcs_from_path(blob_path):
+    assert "gs://" in blob_path
+    bucket_name, sep_, blob = blob_path.lstrip("gs://").partition('/')
+    return bucket_name, blob
+
+
+def gcs_write(blob_path, content,
               service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'urlsigner.json')):
-    gcs_operation(bucket_name, "upload", service_file, object_name=blob, file_data=content)
+    bucket_name, blob  = _get_gcs_from_path(blob_path)
+    _gcs_operation(bucket_name, "upload", service_file, object_name=blob, file_data=content)
 
 
-def gcs_read(bucket_name, blob,
+def gcs_read(blob_path,
              service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'urlsigner.json')):
-    return gcs_operation(bucket_name, "download", service_file, object_name=blob)
+    bucket_name, blob  = _get_gcs_from_path(blob_path)
+    return _gcs_operation(bucket_name, "download", service_file, object_name=blob)
 
 
-def gcs_walk(bucket_name, content_filter: str = "image",
+def gcs_walk(folder_path, content_filter: str = "image",
              service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'urlsigner.json')):
-    blobs = gcs_operation(bucket_name, "list_objects", service_file)
+    bucket_name, blob = _get_gcs_from_path(folder_path)
+    assert (len(blob) == 0), "Only walk bucket root is support: use parameter content_filter for filtering instead"
+    blobs = _gcs_operation(bucket_name, "list_objects", service_file)
     output = [blob for blob in blobs['items'] if content_filter in blob.get("contentType", '')]
-    return output
-
-
-def walk(bucket_name, content_filter: str = "image",
-             service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', 'urlsigner.json')):
-    files = gcs_walk(bucket_name, content_filter, service_file)
-    yield from [(ff[0], '', [ff[1]]) for ff in [ff["name"].rsplit("/", 1) for ff in files]]
+    yield from [(path.join("gs://", bucket_name, ff[0]), '', [ff[1]]) for ff in [ff["name"].rsplit("/", 1) for ff in output]]
 
 
 class GcsBatchDownloader(multiprocessing.Process):
-    def __init__(self, service_file="urlsigner.json", max_queue_size=10):
+    def __init__(self, service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'), max_queue_size=10):
         multiprocessing.Process.__init__(self)
         self.service_file = service_file
-        self.q = multiprocessing.JoinableQueue()
-        self.q_downloaded = multiprocessing.JoinableQueue(maxsize=max_queue_size)
+        self.q = multiprocessing.Queue()
+        self.q_downloaded = multiprocessing.Queue(maxsize=max_queue_size)
         self.loop = None
         self.daemon = True
         self.start()
-
 
     def update_queue(self, img_files, batch_size, num_batches, indices):
         self.reset_queues()
@@ -66,7 +69,8 @@ class GcsBatchDownloader(multiprocessing.Process):
             self.q.put(img_files_batch)
 
     @staticmethod
-    async def download_file(bucket_name, blob, st):
+    async def download_file(file_path, st):
+        bucket_name, blob = _get_gcs_from_path(file_path)
         for retries in range(10):
             try:
                 byte_buffer = await st.download(bucket_name, blob, timeout=100)
@@ -81,10 +85,9 @@ class GcsBatchDownloader(multiprocessing.Process):
             st = Storage(service_file=self.service_file, session=session)
             while True:
                 blobs = self.q.get()
-                futures = [self.download_file(blob['bucket'], blob['path'], st) for blob in blobs]
+                futures = [self.download_file(blob['path'], st) for blob in blobs]
                 buffers = await asyncio.gather(*futures)
                 self.q_downloaded.put((buffers, [blob['category'] for blob in blobs]))
-                self.q.task_done()
                 self.q.put(blobs) # Adding batch to queue again, if multiple querys on "same" batch
 
     @property
@@ -113,11 +116,6 @@ class GcsBatchDownloader(multiprocessing.Process):
                 self.q_downloaded.get_nowait()
             except queue.Empty:
                 break
-
-    def cancel(self):
-        self.reset_queues()
-        self.q.cancel_join_thread()
-        self.q_downloaded.cancel_join_thread()
 
     def run(self):
         self.loop.run_until_complete(asyncio.wait((self.download_loop(),)))

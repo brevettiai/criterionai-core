@@ -7,7 +7,7 @@ from collections import defaultdict
 from types import SimpleNamespace
 from json import JSONEncoder
 import tempfile
-from .utils import gcs_io
+from .utils import io_tools
 
 log = logging.getLogger(__name__)
 
@@ -48,9 +48,9 @@ class CriterionConfig:
         :return: CriterionConfig object
         """
 
-        parameter_path = "info.json"
+        parameter_path = path.join(job_dir, "info.json")
         log.info("Config args found at: '%s'" % parameter_path)
-        parameters = json.loads(str(gcs_io.gcs_read(job_dir, parameter_path), "utf-8"))
+        parameters = json.loads(str(io_tools.read_file(parameter_path), "utf-8"))
         log.info(parameters)
 
         with open(schema_path, 'r') as fp:
@@ -87,9 +87,9 @@ class CriterionConfig:
         :return:
         """
 
-        gcs_model_path = self.job_dir + "/" + package_path
+        gcs_model_path = path.join(self.job_dir, package_path)
         with open(tmp_package_path, 'rb') as f_package:
-            gcs_io.gcs_write(self.job_dir, gcs_model_path, f_package.read())
+            io_tools.write_file(gcs_model_path, f_package.read())
 
         complete_url = self.host_name + self.api_endpoints['complete'] + package_path
         try:

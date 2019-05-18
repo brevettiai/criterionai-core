@@ -1,4 +1,4 @@
-from .utils import gcs_io
+from .utils import io_tools
 import mimetypes
 import logging
 
@@ -19,7 +19,7 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
 
     category_map = {} if category_map is None else category_map
 
-    for root, _, files in gcs_io.walk(dataset["bucket"]):
+    for root, _, files in io_tools.walk(dataset["bucket"]):
         dir_ = root[:-1] if root.endswith("/") else root
         category = dir_.rsplit("/", category_depth)
 
@@ -35,7 +35,6 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
 
             if sample is not None and len(category)>0 and mimetypes.guess_type(file)[0].startswith('image/'):
                 sample["dataset"] = dataset['name']
-                sample["bucket"] = dataset['bucket']
                 sample["id"] = dataset['id']
                 samples.setdefault(category, []).append(sample)
     return samples
