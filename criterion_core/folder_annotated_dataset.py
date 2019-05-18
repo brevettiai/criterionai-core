@@ -68,6 +68,7 @@ def load_image_datasets(datasets, class_map=None, force_categories=False):
         datasets_[d['id']] = load_dataset(d,
                                       d['name'],
                                      filter=filter_file_by_ending({'bmp', 'jpeg', 'jpg', 'png'}),
-                                     category_map=class_map)
+                                     category_map=class_map,
+                                     force_categories=force_categories)
 
     return datasets_
