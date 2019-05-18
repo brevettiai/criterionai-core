@@ -42,9 +42,9 @@ def gcs_write(blob_path, content,
     _gcs_operation(bucket_name, "upload", service_file, object_name=blob, file_data=content)
 
 
-def gcs_read(blob_path, params=None, service_file: str=os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
+def gcs_read(blob_path, service_file: str=os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     bucket_name, blob  = _get_gcs_from_path(blob_path)
-    return _gcs_operation(bucket_name, "download", service_file, object_name=blob, params=params)
+    return _gcs_operation(bucket_name, "download", service_file, object_name=blob)
 
 
 def gcs_walk(folder_path, content_filter: str = "image",
