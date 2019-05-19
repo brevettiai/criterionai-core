@@ -1,10 +1,15 @@
+import os
+# if os.name == "nt":
+# Windows hack to fix error in generic_utils
+# from tensorflow.python.keras.utils import generic_utils
+# utils_path = generic_utils.__file__
+# patch with file criterion_core/utils/export_model_generic_utils.patch
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import load_model
 from .path import movedir
 import shutil
 import tarfile
-import os
 
 
 def define_image_input_receiver(input_tensor, img_format, input_shape):
