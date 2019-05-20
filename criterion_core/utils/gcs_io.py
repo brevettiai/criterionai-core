@@ -76,7 +76,7 @@ async def download_file(file_path, st):
 
 
 async def async_download_batch(img_files_batch, service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
-    conn = aiohttp.TCPConnector(limit_per_host=32)
+    conn = aiohttp.TCPConnector(limit_per_host=64)
     async with aiohttp.ClientSession(connector=conn) as session:
         st = Storage(service_file=service_file, session=session)
         futures = [download_file(blob['path'], st) for blob in img_files_batch]
