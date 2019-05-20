@@ -29,7 +29,7 @@ def get_tforms(rois, target_shape):
     # target_size gives image size
     sz = [0, 0]
     if len(rois) == 0:
-        rois = [[[0, 0], target_shape[:2]]]
+        rois = [[[0, 0], target_shape[1::-1]]]
     t_forms = [None] * len(rois)
     for ii, roi in enumerate(rois):
         crop_x = roi[0][1]
@@ -41,7 +41,7 @@ def get_tforms(rois, target_shape):
             sz[1] = sz_x
         sz[0] += roi[1][0] - roi[0][0]
         t_forms[ii] = np.array([[1, 0, -crop_x], [0, 1, -crop_y], [0, 0, 1]], dtype=np.float32)
-    sc = [target_shape[jj] / float(sz[jj]) for jj in range(2)]
+    sc = [target_shape[1-jj] / float(sz[jj]) for jj in range(2)]
     t_scale = np.array([[sc[1], 0, 0], [0, sc[0], 0], [0, 0, 1]], dtype=np.float32)
     t_forms = [t_scale.dot(t_form) for t_form in t_forms]
     return t_forms
@@ -83,9 +83,9 @@ def transform(im, A, target_shape):
     if n_dim > 2:
         im_t = im.copy()
         for ii in range(im.shape[2]):
-            im_t[:, :, ii] = cv2.warpAffine(im[:, :, ii], A, target_shape[0:2], flags=cv2.INTER_NEAREST)
+            im_t[:, :, ii] = cv2.warpAffine(im[:, :, ii], A, target_shape[1::-1], flags=cv2.INTER_NEAREST)
     else:
-        im_t = cv2.warpAffine(im, A, target_shape[0:2], flags=cv2.INTER_NEAREST)
+        im_t = cv2.warpAffine(im, A, target_shape[1::-1], flags=cv2.INTER_NEAREST)
     return im_t
 
 

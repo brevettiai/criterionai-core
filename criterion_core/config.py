@@ -88,6 +88,7 @@ class CriterionConfig:
         """
 
         gcs_model_path = path.join(self.job_dir, package_path)
+        log.info("Saving saved_model to {}".format(gcs_model_path))
         with open(tmp_package_path, 'rb') as f_package:
             io_tools.write_file(gcs_model_path, f_package.read())
 
