@@ -1,23 +1,5 @@
 import os
-from tensorflow.python.lib.io import file_io
-from functools import reduce
-
-
-def partition(items, func):
-    return reduce(lambda x, y: x[not func(y)].append(y) or x, items, ([], []))
-
-def gswalk(top):
-    items = file_io.list_directory_v2(top)
-    folders, files = partition(items, lambda x: x.endswith("/"))
-    yield top, folders, files
-    for folder in folders:
-        yield from gswalk(os.path.join(top, folder))
-
-def walk(top):
-    if top.startswith("gs://"):
-        yield from gswalk(top)
-    else:
-        yield from os.walk(top)
+from criterion_core.utils.path import walk
 
 
 def load_dataset(folder, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
