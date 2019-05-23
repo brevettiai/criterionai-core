@@ -16,7 +16,7 @@ def fill_array(args):
     idx, sample, atlas_shape = args
     try:
         img = Image.open(sample["path"])
-        img.thumbnail(atlas_shape[1:-1])
+        img.thumbnail(atlas_shape[1:3])
         tmp = np.ctypeslib.as_array(shared_array).reshape(atlas_shape)
         tmp[idx] = img
     except Exception:
@@ -24,7 +24,10 @@ def fill_array(args):
 
 def create_atlas(samples, thumbnail_size=(64,64), channels=3):
     atlas_size = int(math.ceil(math.sqrt(len(samples))))
-    atlas_shape = len(samples), *thumbnail_size, channels
+    if channels > 1:
+        atlas_shape = len(samples), *thumbnail_size, channels
+    else:
+        atlas_shape = len(samples), *thumbnail_size
 
     # Build atlas
     shared_array = None
@@ -46,11 +49,11 @@ def create_atlas(samples, thumbnail_size=(64,64), channels=3):
 def build_facets(samples, output_path, atlas_param=None):
     atlas_param = atlas_param or {}
 
-    atlas = create_atlas(samples, **atlas_param)
-    Image.fromarray(atlas).save(path.join(output_path, 'spriteatlas.jpeg'))
-
     with file_io.FileIO(path.join(output_path, 'facets.json'), 'w') as fp:
         json.dump(list(samples), fp)
+
+    atlas = create_atlas(samples, **atlas_param)
+    Image.fromarray(atlas).save(path.join(output_path, 'spriteatlas.jpeg'))
 
 
 if __name__ == '__main__':
