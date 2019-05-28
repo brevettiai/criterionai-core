@@ -36,7 +36,7 @@ class CriterionConfig:
             complete=complete_url,
             remote=remote_url,
         )
-        self._temporary_path = tempfile.TemporaryDirectory(prefix=self.name + "-")
+        self._temporary_path = None
 
     @staticmethod
     def from_mlengine(job_dir, schema_path):
@@ -64,6 +64,8 @@ class CriterionConfig:
         return self.job_dir
 
     def temp_path(self, *paths):
+        if self._temporary_path is None:
+            self._temporary_path = tempfile.TemporaryDirectory(prefix=self.name + "-")
         return path.join(self._temporary_path.name, *paths)
 
     def artifact_path(self, *paths):
@@ -162,7 +164,7 @@ def in_dicts(d, uri):
     :return:
     """
     if len(uri) > 1:
-        return in_dicts(d[uri[0]], uri[1:])
+        return in_dicts(d[uri[0]], uri[1:]) if uri[0] in d else False
     else:
         return uri[0] in d
 

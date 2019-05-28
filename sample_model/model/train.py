@@ -24,6 +24,8 @@ def train(config):
 
     tmp_package_path = config.temp_path("package.tar.gz")
 
+    # TODO Insert your training code here -> put model output at temp_package_path
+
     log.info("Completing job")
     config.complete_job(tmp_package_path)
 
