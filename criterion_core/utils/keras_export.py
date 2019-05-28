@@ -1,8 +1,16 @@
+import os
+# if os.name == "nt":
+# Windows hack to fix error in generic_utils
+# from tensorflow.python.keras.utils import generic_utils
+# utils_path = generic_utils.__file__
+# patch with file criterion_core/utils/export_model_generic_utils.patch
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras.models import load_model
 from .path import movedir
+import shutil
 import tarfile
-import os
+
 
 def define_image_input_receiver(input_tensor, img_format, input_shape):
     """
@@ -44,14 +52,11 @@ def export_model(keras_model, img_format, input_shape, export_path='tf_export', 
 
     movedir(os.path.join(os.getcwd(), tf_model_path, 'keras'), os.path.join(os.getcwd(), tf_model_path))
 
-    estimator.export_savedmodel(
+    export_path_output = estimator.export_savedmodel(
         export_path,
         serving_input_receiver_fn=define_image_input_receiver(keras_model.input.name.split(":",1)[0], img_format, input_shape))
-    all_exports = sorted(filter(lambda x: not x.startswith("temp-"), os.listdir(export_path)), key=lambda x: int(x))
-    newest = all_exports[-1]
-
-    export_path_newest = os.path.join(export_path, newest)
-    saved_model_tar = os.path.join(export_path_newest, 'saved_model.tar.gz')
+    export_path_output = str(export_path_output , encoding="utf-8")
+    saved_model_tar = os.path.join(export_path_output, 'saved_model.tar.gz')
     with tarfile.open(saved_model_tar, "w:gz") as tar:
-        tar.add(export_path_newest, arcname="saved_model")
+        tar.add(export_path_output, arcname="saved_model")
     return saved_model_tar

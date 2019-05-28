@@ -1,8 +1,8 @@
+from .utils import io_tools
+import mimetypes
 import os
-from criterion_core.utils.path import walk
 
-
-def load_dataset(folder, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
+def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
     Load a dataset using the last n directories as category
     :param folder: top folder of dataset to walk
@@ -11,30 +11,33 @@ def load_dataset(folder, name=None, category_depth=1, filter=None, samples=None,
     :param samples: dict of existing samples to extend
     :return: samples dict with new samples on the format {cat1:[samples...], cat2:...]}
     """
-    sep = os.sep if not folder.startswith("gs://") else "/"
     
     if samples is None:
         samples = {}
 
     category_map = {} if category_map is None else category_map
 
-    for path, folders, files in walk(folder):
-        dir_ = path[:-1] if path.endswith("/") else path
-        category = dir_.rsplit(os.sep, category_depth)
+    sep_ = "/" if "://" in dataset["bucket"] else os.path.sep
+
+    for root, _, files in io_tools.walk(dataset["bucket"]):
+        dir_ = root[:-1] if root.endswith(sep_) else root
+        category = dir_.rsplit(sep_, category_depth)
+
         category = category[-1] if category_depth == 1 else category[1:]
 
         category = category_map.get(category, category)
-        if force_categories and category not in category_map:
+        if force_categories and category not in list(category_map.values()):
             continue
 
         for file in files:
-            sample = file if filter is None else filter(os.path.join(path, file), category)
+            path = sep_.join([root, file])
+            sample = dict(path=path) if filter is None else filter(path, category)
 
-            if not sample is None:
-                sample["dataset"] = folder.rsplit(sep, 1)[-1] if name is None else name
+            if sample is not None and len(category)>0 and mimetypes.guess_type(file)[0].startswith('image/'):
+                sample["dataset"] = dataset['name']
+                sample["id"] = dataset['id']
                 samples.setdefault(category, []).append(sample)
     return samples
-
 
 def filter_file_by_ending(ftypes):
     """
@@ -62,9 +65,10 @@ def load_image_datasets(datasets, class_map=None, force_categories=False):
     datasets_ = {}
 
     for d in datasets:
-        datasets_[d['id']] = load_dataset(d['bucket'],
+        datasets_[d['id']] = load_dataset(d,
                                       d['name'],
                                      filter=filter_file_by_ending({'bmp', 'jpeg', 'jpg', 'png'}),
-                                     category_map=class_map)
+                                     category_map=class_map,
+                                     force_categories=force_categories)
 
     return datasets_
