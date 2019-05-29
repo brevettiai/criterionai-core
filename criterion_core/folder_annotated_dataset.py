@@ -1,19 +1,6 @@
+from .utils import io_tools
+import mimetypes
 import os
-from fs import open_fs
-from functools import reduce
-
-def partition(items, func):
-    return reduce(lambda x, y: x[not func(y)].append(y) or x, items, ([], []))
-
-
-def walk(top):
-    items = file_io.list_directory_v2(top)
-    folders, files = partition(items, lambda x: x.endswith("/"))
-    yield top, folders, files
-    for folder in folders:
-        yield from walk(os.path.join(top, folder))
-
-
 def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
     Load a dataset using the last n directories as category
@@ -31,24 +18,27 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
 
     category_map = {} if category_map is None else category_map
 
-    for root, _, files in file_sys.walk():
-        category = root.rsplit('/', category_depth)
+    sep_ = "/" if "://" in dataset["bucket"] else os.path.sep
+
+    for root, _, files in io_tools.walk(dataset["bucket"]):
+        dir_ = root[:-1] if root.endswith(sep_) else root
+        category = dir_.rsplit(sep_, category_depth)
+
         category = category[-1] if category_depth == 1 else category[1:]
 
         category = category_map.get(category, category)
-        if force_categories and category not in category_map:
+        if force_categories and category not in list(category_map.values()):
             continue
 
         for file in files:
-            path = '/'.join([root, file.name])
+            path = sep_.join([root, file])
             sample = dict(path=path) if filter is None else filter(path, category)
 
-            if not sample is None:
+            if sample is not None and len(category)>0 and mimetypes.guess_type(file)[0].startswith('image/'):
                 sample["dataset"] = dataset['name']
-                sample["file_sys"] = file_sys
+                sample["id"] = dataset['id']
                 samples.setdefault(category, []).append(sample)
     return samples
-
 
 def filter_file_by_ending(ftypes):
     """
@@ -79,6 +69,7 @@ def load_image_datasets(datasets, class_map=None, force_categories=False):
         datasets_[d['id']] = load_dataset(d,
                                       d['name'],
                                      filter=filter_file_by_ending({'bmp', 'jpeg', 'jpg', 'png'}),
-                                     category_map=class_map)
+                                     category_map=class_map,
+                                     force_categories=force_categories)
 
     return datasets_

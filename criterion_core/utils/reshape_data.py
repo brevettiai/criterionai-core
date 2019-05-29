@@ -10,4 +10,4 @@ def tile2d(x, grid=(10, 10)):
     :return: tiled
     """
     generator = chain((x[i] for i in range(len(x))), repeat(np.zeros_like(x[0])))
-    return np.vstack([np.hstack(list(islice(generator, grid[0]))) for _ in range(grid[1])])
+    return np.vstack([np.hstack(list(islice(generator, int(grid[0])))) for _ in range(int(grid[1]))])

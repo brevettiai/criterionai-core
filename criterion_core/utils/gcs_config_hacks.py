@@ -9,7 +9,9 @@ old_open = builtins.open
 # NB: not all modes are compatible; should handle more carefully.
 # Probably should be reported on
 # https://github.com/tensorflow/tensorflow/issues/4357
-def new_open(name, mode='r', buffering=-1):
+def new_open(name, mode='r', buffering=-1, *args, **kwargs):
+    if not args or not kwargs:
+        old_open(name, mode, buffering, *args, **kwargs)
     if False and 'U' in mode:
         file_io.recursive_create_dir('tmp')
         file_io.copy(name, os.path.join('tmp', os.path.split(name)[-1]), overwrite=True)

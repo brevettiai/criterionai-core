@@ -1,13 +1,13 @@
 import json
-from .utils import path  # , gcs_config_hacks
+from .utils import path
 import logging
 import requests
 from itertools import chain
 from collections import defaultdict
 from types import SimpleNamespace
-import os
+from json import JSONEncoder
 import tempfile
-from fs import open_fs
+from .utils import io_tools
 
 log = logging.getLogger(__name__)
 
@@ -48,38 +48,31 @@ class CriterionConfig:
         :return: CriterionConfig object
         """
 
-        job_fs = open_fs(job_dir)
-        
-        parameter_path = "/info.json"
-
-        log.info(parameter_path)
-        with job_fs.open(parameter_path, 'r') as fp:
-            parameters = json.load(fp)
-
+        parameter_path = path.join(job_dir, "info.json")
+        log.info("Config args found at: '%s'" % parameter_path)
+        parameters = json.loads(str(io_tools.read_file(parameter_path), "utf-8"))
         log.info(parameters)
-        log.info(schema_path)
 
-        log.info("Find schema")
-        log.info(os.path.dirname(os.path.realpath(__file__)))
-
-        log.info(os.getcwd())
         with open(schema_path, 'r') as fp:
             schema = json.load(fp)
 
-        log.info(schema)
-        return CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
+        config = CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
+        log.info(config)
+        return config
 
     def get_facets_folder(self):
         return self.job_dir
 
     def temp_path(self, *paths):
-        return path.join(self._temporary_path, *paths)
+        io_tools.make_dirs(self._temporary_path.name)
+        return path.join(self._temporary_path.name, *paths)
 
     def artifact_path(self, *paths):
+        io_tools.make_dirs(path.join(self.job_dir, "artifacts"))
         return path.join(self.job_dir, "artifacts", *paths)
 
     def upload_chart(self, name, vegalite_json):
-        charts_url = '{}{}&name={}'.format(self.host_name + self.api_endpoints['charts'] + name)
+        charts_url = '{}{}&name={}'.format(self.host_name, self.api_endpoints['charts'], name)
         try:
             r = requests.post(charts_url, headers={'Content-Type': 'application/json'}, data=vegalite_json)
         except requests.exceptions.HTTPError as e:
@@ -96,8 +89,10 @@ class CriterionConfig:
         :return:
         """
 
-        gcs_model_path = self.job_dir + "/" + package_path
-        file_io.copy(tmp_package_path, gcs_model_path, overwrite=True)
+        gcs_model_path = path.join(self.job_dir, package_path)
+        log.info("Saving saved_model to {}".format(gcs_model_path))
+        with open(tmp_package_path, 'rb') as f_package:
+            io_tools.write_file(gcs_model_path, f_package.read())
 
         complete_url = self.host_name + self.api_endpoints['complete'] + package_path
         try:
@@ -112,7 +107,13 @@ class CriterionConfig:
         self._temporary_path.cleanup()
 
     def __str__(self):
-        raise NotImplementedError
+        return self.ConfigEncoder().encode(self)
+
+    class ConfigEncoder(JSONEncoder):
+        def default(self, o):
+            if isinstance(o, CriterionConfig):
+                return {k: v for k, v in o.__dict__.items() if not k.startswith("_")}
+            return o.__dict__
 
 
 def merge_settings(schema, settings, check_required_fields=True):
