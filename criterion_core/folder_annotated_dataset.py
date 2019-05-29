@@ -1,6 +1,7 @@
 from .utils import io_tools
 import mimetypes
 import os
+
 def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
     Load a dataset using the last n directories as category
@@ -11,8 +12,6 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
     :return: samples dict with new samples on the format {cat1:[samples...], cat2:...]}
     """
     
-    file_sys = open_fs(dataset["bucket"])
-
     if samples is None:
         samples = {}
 
