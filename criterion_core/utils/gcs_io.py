@@ -20,11 +20,12 @@ def get_loop():
     return loop
 
 
-def _gcs_operation(bucket_name, operation_name,
+def _gcs_operation(bucket_name, operation_name, service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'),
                    *args, **kwargs):
     async def async_operation():
         async with aiohttp.ClientSession() as session:
-            st = Storage(session=session)
+            st = Storage(session=session) #service_file=service_file,
+            print("No service file!!!")
             gcs_method = getattr(st, operation_name)
             async_output = await gcs_method(bucket_name, *args, **kwargs)
             return async_output
@@ -76,10 +77,11 @@ async def download_file(file_path, st):
     raise aiohttp.ClientResponseError
 
 
-async def async_download_batch(img_files_batch):
+async def async_download_batch(img_files_batch, service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     conn = aiohttp.TCPConnector(limit_per_host=32)
     async with aiohttp.ClientSession(connector=conn) as session:
-        st = Storage(session=session)
+        st = Storage(session=session) #service_file=service_file,
+        print("No service file!!!")
         futures = [download_file(blob['path'], st) for blob in img_files_batch]
         buffers = await asyncio.gather(*futures)
     return buffers
