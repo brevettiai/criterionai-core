@@ -20,10 +20,11 @@ def get_loop():
     return loop
 
 
-def _gcs_operation(bucket_name, operation_name, service_file: str, *args, **kwargs):
+def _gcs_operation(bucket_name, operation_name, service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'),
+                   *args, **kwargs):
+    print("service file {} found on disc: {}".format(service_file, os.path.exists(service_file)))
     async def async_operation():
-        conn = aiohttp.TCPConnector(limit_per_host=30)
-        async with aiohttp.ClientSession(connector=conn) as session:
+        async with aiohttp.ClientSession() as session:
             st = Storage(service_file=service_file, session=session)
             gcs_method = getattr(st, operation_name)
             async_output = await gcs_method(bucket_name, *args, **kwargs)
@@ -39,25 +40,23 @@ def _get_gcs_from_path(blob_path):
     return bucket_name, blob
 
 
-def gcs_write(blob_path, content,
-              service_file: str=os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
+def gcs_write(blob_path, content, **kwargs):
     bucket_name, blob  = _get_gcs_from_path(blob_path)
-    _gcs_operation(bucket_name, "upload", service_file, object_name=blob, file_data=content)
+    _gcs_operation(bucket_name, "upload", object_name=blob, file_data=content, **kwargs)
 
 
-def gcs_read(blob_path, service_file: str=os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
+def gcs_read(blob_path, **kwargs):
     bucket_name, blob  = _get_gcs_from_path(blob_path)
-    return _gcs_operation(bucket_name, "download", service_file, object_name=blob)
+    return _gcs_operation(bucket_name, "download", object_name=blob, **kwargs)
 
 
-def gcs_walk(folder_path, content_filter: str = "image",
-             service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
+def gcs_walk(folder_path, content_filter: str = "image", **kwargs):
     bucket_name, blob = _get_gcs_from_path(folder_path)
     assert (len(blob) == 0), "Only walk bucket root is support: use parameter content_filter for filtering instead"
     outputs = []
     params = None
     while True:
-        blobs = _gcs_operation(bucket_name, "list_objects", service_file, params=params)
+        blobs = _gcs_operation(bucket_name, "list_objects", params=params, **kwargs)
         outputs.append([blob for blob in blobs['items'] if content_filter in blob.get("contentType", '')])
         if "nextPageToken" in blobs:
             params = dict(pageToken=blobs["nextPageToken"])
