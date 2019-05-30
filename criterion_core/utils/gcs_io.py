@@ -77,7 +77,7 @@ async def download_file(file_path, st):
     raise aiohttp.ClientResponseError
 
 
-async def async_download_batch(img_files_batch, service_file: str):
+async def async_download_batch(img_files_batch, service_file: str = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')):
     conn = aiohttp.TCPConnector(limit_per_host=32)
     async with aiohttp.ClientSession(connector=conn) as session:
         st = Storage(service_file=service_file, session=session)
