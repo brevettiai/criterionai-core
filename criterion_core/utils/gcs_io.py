@@ -2,35 +2,44 @@ import os
 import asyncio
 import aiohttp
 from gcloud.aio.storage import Storage
+import google.auth
+from google.cloud import storage
 from . import path
 import threading
 import logging
+import datetime
 
 logging.getLogger("asyncio").setLevel(level=logging.INFO)
+logging.getLogger("urllib3").setLevel(level=logging.INFO)
+logging.getLogger("google.auth.transport.requests").setLevel(level=logging.INFO)
 
 threadLocal = threading.local()
 
 
+def get_signed_url(bucket_id, blob_path, expiration=datetime.datetime.utcnow() + datetime.timedelta(days=365)):
+    credentials, project = google.auth.default()
+    storage_client = storage.Client(project, credentials)
+    auth_request = requests.Request()
+    signing_credentials = storage_client._credentials
+    bucket = storage_client.get_bucket(bucket_id)
+    blob = bucket.blob(blob_path)
+    signed_url = blob.generate_signed_url(expiration=expiration, method='GET', credentials=signing_credentials,
+                                          version="v2")
+    return signed_url
+
+
 def get_loop():
-    loop = getattr(threadLocal, 'loop', None)
+    if "Main" in threading.current_thread().name:
+        loop = asyncio.get_event_loop()
+    else:
+        loop = getattr(threadLocal, 'loop', None)
+
     if loop is None:
+        print(threading.current_thread())
         loop = asyncio.new_event_loop()
         threadLocal.loop = loop
         asyncio.set_event_loop(loop)
     return loop
-
-
-def _gcs_operation(bucket_name, operation_name,
-                   *args, **kwargs):
-    async def async_operation():
-        async with aiohttp.ClientSession() as session:
-            st = Storage(session=session)
-            gcs_method = getattr(st, operation_name)
-            async_output = await gcs_method(bucket_name, *args, **kwargs)
-            return async_output
-    loop = get_loop()
-    output = list(loop.run_until_complete(asyncio.wait((async_operation(), )))[0])[0].result()
-    return output
 
 
 def _get_gcs_from_path(blob_path):
@@ -39,30 +48,30 @@ def _get_gcs_from_path(blob_path):
     return bucket_name, blob
 
 
-def gcs_write(blob_path, content, **kwargs):
-    bucket_name, blob  = _get_gcs_from_path(blob_path)
-    _gcs_operation(bucket_name, "upload", object_name=blob, file_data=content, **kwargs)
+def gcs_write(blob_path, content):
+    credentials, project = google.auth.default()
+    storage_client = storage.Client(project, credentials)
+    bucket_name, blob_name  = _get_gcs_from_path(blob_path)
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(blob_name=blob_name)
+    return blob.upload_from_string(data=content)
 
 
-def gcs_read(blob_path, **kwargs):
-    bucket_name, blob  = _get_gcs_from_path(blob_path)
-    return _gcs_operation(bucket_name, "download", object_name=blob, **kwargs)
+def gcs_read(blob_path):
+    credentials, project = google.auth.default()
+    storage_client = storage.Client(project, credentials)
+    bucket_name, blob_name  = _get_gcs_from_path(blob_path)
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(blob_name=blob_name)
+    return blob.download_as_string()
 
 
-def gcs_walk(folder_path, content_filter: str = "image", **kwargs):
-    bucket_name, blob = _get_gcs_from_path(folder_path)
-    assert (len(blob) == 0), "Only walk bucket root is support: use parameter content_filter for filtering instead"
-    outputs = []
-    params = None
-    while True:
-        blobs = _gcs_operation(bucket_name, "list_objects", params=params, **kwargs)
-        outputs.append([blob for blob in blobs['items'] if content_filter in blob.get("contentType", '')])
-        if "nextPageToken" in blobs:
-            params = dict(pageToken=blobs["nextPageToken"])
-            continue
-        else:
-            break
-    yield from [(path.join("gs://", bucket_name, ff[0]), '', [ff[1]]) for ff in [ff["name"].rsplit("/", 1) for output in outputs for ff in output]]
+def gcs_walk(blob_path):
+    credentials, project = google.auth.default()
+    storage_client = storage.Client(project, credentials)
+    bucket_name, prefix  = _get_gcs_from_path(blob_path)
+    bucket = storage_client.get_bucket(bucket_name)
+    yield from [(path.join("gs://", bucket_name, output.name.rsplit("/", 1)[0]), '', [output.name.rsplit("/", 1)[1]]) for output in bucket.list_blobs(prefix=prefix)]
 
 
 async def download_file(file_path, st):

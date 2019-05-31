@@ -13,6 +13,8 @@ REQUIRED_PACKAGES = [
     'Pillow==5.2.0',
     'gcloud-aio-auth @ git+https://github.com/elempollon/gcloud-aio.git/#egg=master&subdirectory=auth',
     'gcloud-aio-storage @ git+https://github.com/elempollon/gcloud-aio.git/#egg=master&subdirectory=storage',
+    'google-auth==1.6.3',
+    'google-cloud-storage==1.16.0',
 ]
 
 setup(
