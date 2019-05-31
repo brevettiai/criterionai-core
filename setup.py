@@ -11,8 +11,8 @@ REQUIRED_PACKAGES = [
     'aiohttp==2.3.10',
     "aiofiles==0.4.0",
     'Pillow==5.2.0',
-    'gcloud-aio-auth @ git+https://github.com/elempollon/gcloud-aio.git/#egg=gcloud-aio-auth-2.0.1&subdirectory=auth',
-    'gcloud-aio-storage @ git+https://github.com/elempollon/gcloud-aio.git/#egg=gcloud-aio-storage-4.1.0&subdirectory=storage',
+    'gcloud-aio-auth @ git+https://github.com/elempollon/gcloud-aio.git/#egg=master&subdirectory=auth',
+    'gcloud-aio-storage @ git+https://github.com/elempollon/gcloud-aio.git/#egg=master&subdirectory=storage',
 ]
 
 setup(

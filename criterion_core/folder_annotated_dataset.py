@@ -36,6 +36,7 @@ def load_dataset(dataset, name=None, category_depth=1, filter=None, samples=None
             if sample is not None and len(category)>0 and mimetypes.guess_type(file)[0].startswith('image/'):
                 sample["dataset"] = dataset['name']
                 sample["id"] = dataset['id']
+                sample["bucket"] = dataset["bucket"]
                 samples.setdefault(category, []).append(sample)
     return samples
 
