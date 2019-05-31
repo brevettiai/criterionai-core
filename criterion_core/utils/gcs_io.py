@@ -3,9 +3,10 @@ import aiohttp
 from gcloud.aio.storage import Storage
 import google.auth
 from google.cloud import storage
-from . import path
+from urllib.parse import unquote
 import threading
 import logging
+import backoff
 
 logging.getLogger("asyncio").setLevel(level=logging.INFO)
 logging.getLogger("urllib3").setLevel(level=logging.INFO)
@@ -58,18 +59,14 @@ def gcs_walk(blob_path):
     storage_client = storage.Client(project, credentials)
     bucket_name, prefix  = _get_gcs_from_path(blob_path)
     bucket = storage_client.get_bucket(bucket_name)
-    yield from [(path.join("gs://", bucket_name, output.name.rsplit("/", 1)[0]), '', [output.name.rsplit("/", 1)[1]]) for output in bucket.list_blobs(prefix=prefix)]
+    return ((unquote(output.public_url).replace("https://storage.googleapis.com/", "gs://").rsplit("/", 1)[0], '', [output.name.rsplit("/", 1)[-1]]) for output in bucket.list_blobs(prefix=prefix))
 
 
+@backoff.on_exception(backoff.expo, aiohttp.ClientResponseError, max_tries=5)  # type: ignore
 async def download_file(file_path, st):
     bucket_name, blob = _get_gcs_from_path(file_path)
-    for retries in range(10):
-        try:
-            byte_buffer = await st.download(bucket_name, blob, timeout=100)
-            return byte_buffer
-        except aiohttp.ClientResponseError:
-            pass
-    raise aiohttp.ClientResponseError
+    byte_buffer = await st.download(bucket_name, blob, timeout=100)
+    return byte_buffer
 
 
 async def async_download_batch(img_files_batch):
