@@ -30,7 +30,11 @@ def get_signed_url(bucket_id, blob_path, expiration=datetime.datetime.utcnow() +
 
 def get_loop():
     if threading.current_thread() is threading.main_thread():
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_event_loop()
+        except:
+            loop = None
+            pass
     else:
         loop = getattr(threadLocal, 'loop', None)
 
