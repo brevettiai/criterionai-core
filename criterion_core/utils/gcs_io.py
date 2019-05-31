@@ -15,17 +15,14 @@ threadLocal = threading.local()
 
 
 def get_loop():
+    loop = getattr(threadLocal, 'loop', None)
     if threading.current_thread() is threading.main_thread():
         try:
             loop = asyncio.get_event_loop()
         except:
-            loop = None
             pass
-    else:
-        loop = getattr(threadLocal, 'loop', None)
 
     if loop is None:
-        print(threading.current_thread())
         loop = asyncio.new_event_loop()
         threadLocal.loop = loop
         asyncio.set_event_loop(loop)
