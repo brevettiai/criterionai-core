@@ -1,4 +1,3 @@
-import os
 import asyncio
 import aiohttp
 from gcloud.aio.storage import Storage
@@ -7,25 +6,12 @@ from google.cloud import storage
 from . import path
 import threading
 import logging
-import datetime
 
 logging.getLogger("asyncio").setLevel(level=logging.INFO)
 logging.getLogger("urllib3").setLevel(level=logging.INFO)
 logging.getLogger("google.auth.transport.requests").setLevel(level=logging.INFO)
 
 threadLocal = threading.local()
-
-
-def get_signed_url(bucket_id, blob_path, expiration=datetime.datetime.utcnow() + datetime.timedelta(days=365)):
-    credentials, project = google.auth.default()
-    storage_client = storage.Client(project, credentials)
-    auth_request = requests.Request()
-    signing_credentials = storage_client._credentials
-    bucket = storage_client.get_bucket(bucket_id)
-    blob = bucket.blob(blob_path)
-    signed_url = blob.generate_signed_url(expiration=expiration, method='GET', credentials=signing_credentials,
-                                          version="v2")
-    return signed_url
 
 
 def get_loop():
