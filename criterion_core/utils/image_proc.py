@@ -57,8 +57,8 @@ def random_affine_transform(target_shape,
     a = (random.random() - 0.5) * np.pi / 90 * augmentation.rotation_angle
     sh = (random.random() - 0.5) * 2 * augmentation.shear_range
 
-    t1 = (random.random() - 0.5) * 2 * augmentation.horizontal_translation_range
-    t2 = (random.random() - 0.5) * 2 * augmentation.vertical_translation_range
+    t1 = (random.random() - 0.5) * 2 * augmentation.horizontal_translation_range * target_shape[1]
+    t2 = (random.random() - 0.5) * 2 * augmentation.vertical_translation_range * target_shape[0]
 
     r1 = (-1 if random.random() < 0.5 else 1) if augmentation.flip_horizontal else 1
     r2 = (-1 if random.random() < 0.5 else 1) if augmentation.flip_vertical else 1
