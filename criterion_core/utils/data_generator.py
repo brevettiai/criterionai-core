@@ -19,8 +19,8 @@ class DataGenerator(keras.utils.Sequence):
         self.img_files = img_files
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.rois = rois
         self.target_mode = target_mode
-        self.t_forms = image_proc.get_tforms(rois, target_shape)
         self.augmentation = augmentation
         self.target_shape = target_shape
         self.indices = None
@@ -58,7 +58,7 @@ class DataGenerator(keras.utils.Sequence):
             if self.color_mode == cv2.IMREAD_COLOR:
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             aug = image_proc.random_affine_transform(self.target_shape, self.augmentation)
-            img_t = image_proc.apply_transforms([img], aug, self.t_forms, self.target_shape)
+            img_t = image_proc.apply_transforms([img], aug, self.rois, self.target_shape)
 
             X[ii] = img_t[0]
         return X

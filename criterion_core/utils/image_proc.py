@@ -25,13 +25,13 @@ def affine(sc, r1, r2, a, sh, t1, t2):
     return tra.dot(she.dot(ref.dot(scale.dot(rot))))
 
 
-def get_tforms(rois, target_shape):
+def get_tforms(rois, target_shape, input_shape):
     # Cropping:
     # tx, ty: offset
     # target_size gives image size
     sz = [0, 0]
     if len(rois) == 0:
-        rois = [[[0, 0], target_shape[1::-1]]]
+        rois = [[[0, 0], input_shape[1::-1]]]
     t_forms = [None] * len(rois)
     for ii, roi in enumerate(rois):
         crop_x = roi[0][1]
@@ -90,7 +90,9 @@ def transform(im, A, target_shape, interpolation=interpolation_flag['linear']):
     return im_t
 
 
-def apply_transforms(images, aug, t_forms, target_shape, *args, **kwargs):
+def apply_transforms(images, aug, rois, target_shape, *args, **kwargs):
+    input_shape = images[0].shape
+    t_forms = get_tforms(rois, target_shape, input_shape)
     img_t = [np.concatenate([transform(im, aug.dot(t_form), target_shape, *args, **kwargs) for t_form in t_forms], axis=0)/255.0 for im in images]
     for jj in range(len(img_t)):
         if img_t[jj].ndim == 2:
