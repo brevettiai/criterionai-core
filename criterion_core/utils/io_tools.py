@@ -63,7 +63,7 @@ async def _async_download_batch(img_files_batch):
 def aio_download_batch(img_files_batch):
     loop = gcs_io.get_loop()
     buffers = list(loop.run_until_complete(asyncio.wait((_async_download_batch(img_files_batch), )))[0])[0].result()
-    return buffers, [blob['category'] for blob in img_files_batch]
+    return buffers
 
 
 def download_batch(img_files_batch):

@@ -36,8 +36,7 @@ class CriterionConfig:
             complete=complete_url,
             remote=remote_url,
         )
-
-        self._temporary_path = None
+        self._temporary_path = tempfile.TemporaryDirectory(prefix=self.name + "-")
         self.__dict__.update(kwargs)
 
     @staticmethod
@@ -65,11 +64,11 @@ class CriterionConfig:
         return self.job_dir
 
     def temp_path(self, *paths):
-        if self._temporary_path is None:
-            self._temporary_path = tempfile.TemporaryDirectory(prefix=self.name + "-")
+        io_tools.make_dirs(self._temporary_path.name)
         return path.join(self._temporary_path.name, *paths)
 
     def artifact_path(self, *paths):
+        io_tools.make_dirs(path.join(self.job_dir, "artifacts"))
         return path.join(self.job_dir, "artifacts", *paths)
 
     def upload_chart(self, name, vegalite_json):
@@ -167,7 +166,7 @@ def in_dicts(d, uri):
     :return:
     """
     if len(uri) > 1:
-        return in_dicts(d[uri[0]], uri[1:]) if uri[0] in d else False
+        return in_dicts(d[uri[0]], uri[1:])
     else:
         return uri[0] in d
 
@@ -186,5 +185,7 @@ def dicts_to_simple_namespace(dicts):
 
 if __name__ == '__main__':
     schemafile = r'C:\Users\emtyg\dev\novo\criterionai-packages\imageclassification\settings-schema.json'
-    schema = json.load(io_tools.read_file(schemafile))
+    with file_io.FileIO(schemafile) as fp:
+        schema = json.load(fp)
+
     CriterionConfig("", "", "", {}, "", "", "", schema)

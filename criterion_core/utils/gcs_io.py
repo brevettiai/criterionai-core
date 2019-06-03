@@ -4,6 +4,9 @@ import aiohttp
 from gcloud.aio.storage import Storage
 from . import path
 import threading
+import logging
+
+logging.getLogger("asyncio").setLevel(level=logging.INFO)
 
 threadLocal = threading.local()
 
@@ -87,4 +90,4 @@ async def async_download_batch(img_files_batch, service_file: str = os.environ.g
 def download_batch(img_files_batch):
     loop = get_loop()
     buffers = list(loop.run_until_complete(asyncio.wait((async_download_batch(img_files_batch), )))[0])[0].result()
-    return buffers, [blob['category'] for blob in img_files_batch]
+    return buffers

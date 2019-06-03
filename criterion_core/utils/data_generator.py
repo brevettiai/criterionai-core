@@ -14,11 +14,12 @@ COLOR_MODE = {1:cv2.IMREAD_GRAYSCALE,
               3:cv2.IMREAD_COLOR}
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
-                 shuffle=True, max_epoch_samples=np.inf):
+                 shuffle=True, target_mode="classification", max_epoch_samples=np.inf):
         'Initialization'
         self.img_files = img_files
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.target_mode = target_mode
         self.t_forms = image_proc.get_tforms(rois, target_shape)
         self.augmentation = augmentation
         self.target_shape = target_shape
@@ -49,7 +50,7 @@ class DataGenerator(keras.utils.Sequence):
 
     def __data_generation(self, img_files_batch):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
-        buffers, categories = io_tools.download_batch(img_files_batch)
+        buffers = io_tools.download_batch(img_files_batch)
         # Initialization
         X = np.zeros((len(buffers), ) + self.target_shape)
         for ii, buffer in enumerate(buffers):
@@ -60,13 +61,16 @@ class DataGenerator(keras.utils.Sequence):
             img_t = image_proc.apply_transforms([img], aug, self.t_forms, self.target_shape)
 
             X[ii] = img_t[0]
-
-        y = self.enc(categories)
-        return X, y
+        return X
 
     def __getitem__(self, index):
         'Generate one batch of data'
         batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
         img_files_batch = [self.img_files[k] for k in batch_indices]
-        X, y = self.__data_generation(img_files_batch)
-        return X, y
+        X = self.__data_generation(img_files_batch)
+        if self.target_mode=="classification":
+            categories = [blob['category'] for blob in img_files_batch]
+            y = self.enc(categories)
+            return X, y
+        elif self.target_mode=="input":
+            return X, X

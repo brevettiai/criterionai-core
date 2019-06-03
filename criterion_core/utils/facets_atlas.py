@@ -4,22 +4,24 @@ from criterion_core.utils import path
 from PIL import Image
 import time
 import numpy as np
-# from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool as Pool
 from multiprocessing import sharedctypes
 import json
 import os
-from tensorflow.python.lib.io import file_io
-
+from . import io_tools
+import cv2
 
 def fill_array(args):
     idx, sample, atlas_shape = args
     try:
-        img = Image.open(sample["path"])
+        buffer = io_tools.read_file(sample["path"])
+        cv2_img = cv2.imdecode(np.frombuffer(buffer, np.uint8), -1)
+        img = Image.fromarray(cv2_img, 'RGB' if cv2_img.ndim==3 else 'L')
         img.thumbnail(atlas_shape[1:3])
         tmp = np.ctypeslib.as_array(shared_array).reshape(atlas_shape)
         tmp[idx] = img
     except Exception:
+        print(Exception)
         pass
 
 def create_atlas(samples, thumbnail_size=(64,64), channels=3):
@@ -49,13 +51,12 @@ def create_atlas(samples, thumbnail_size=(64,64), channels=3):
 def build_facets(samples, output_path, atlas_param=None):
     atlas_param = atlas_param or {}
 
-    with file_io.FileIO(path.join(output_path, 'facets.json'), 'w') as fp:
-        json.dump(list(samples), fp)
+    io_tools.write_file(path.join(output_path, 'facets.json'), json.dumps(list(samples)))
 
     atlas = create_atlas(samples, **atlas_param)
-    Image.fromarray(atlas).save(path.join(output_path, 'spriteatlas.jpeg'))
-
-
+    jpeg_created, buffer = cv2.imencode(".jpeg", atlas)
+    assert jpeg_created
+    io_tools.write_file(path.join(output_path, 'spriteatlas.jpeg'), bytes(buffer))
 if __name__ == '__main__':
     from criterion_core import load_image_datasets
     from criterion_core.utils import sampletools
