@@ -1,5 +1,5 @@
 import json
-from .utils import path#, gcs_config_hacks
+from .utils import path
 import logging
 import requests
 from itertools import chain
@@ -7,7 +7,7 @@ from collections import defaultdict
 from types import SimpleNamespace
 from json import JSONEncoder
 import tempfile
-from tensorflow.python.lib.io import file_io
+from .utils import io_tools
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class CriterionConfig:
     """
 
     def __init__(self, job_dir, id, name, datasets, settings, api_key, host_name, charts_url, complete_url, remote_url,
-                 schema, check_required_settings=True):
+                 schema, check_required_settings=True, **kwargs):
         """
         :param schema: JSON schema used for model definition
         :param parameters: setup parameters overwriting default schema values
@@ -36,7 +36,9 @@ class CriterionConfig:
             complete=complete_url,
             remote=remote_url,
         )
+
         self._temporary_path = None
+        self.__dict__.update(kwargs)
 
     @staticmethod
     def from_mlengine(job_dir, schema_path):
@@ -46,14 +48,13 @@ class CriterionConfig:
         :param schema_path: path for model schema
         :return: CriterionConfig object
         """
-        parameter_path = path.join(job_dir, "info.json")
 
+        parameter_path = path.join(job_dir, "info.json")
         log.info("Config args found at: '%s'" % parameter_path)
-        with file_io.FileIO(parameter_path, 'r') as fp:
-            parameters = json.load(fp)
+        parameters = json.loads(str(io_tools.read_file(parameter_path), "utf-8"))
         log.info(parameters)
 
-        with file_io.FileIO(schema_path, 'r') as fp:
+        with open(schema_path, 'r') as fp:
             schema = json.load(fp)
 
         config = CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
@@ -89,8 +90,10 @@ class CriterionConfig:
         :return:
         """
 
-        gcs_model_path = self.job_dir + "/" + package_path
-        file_io.copy(tmp_package_path, gcs_model_path, overwrite=True)
+        gcs_model_path = path.join(self.job_dir, package_path)
+        log.info("Saving saved_model to {}".format(gcs_model_path))
+        with open(tmp_package_path, 'rb') as f_package:
+            io_tools.write_file(gcs_model_path, f_package.read())
 
         complete_url = self.host_name + self.api_endpoints['complete'] + package_path
         try:
@@ -183,7 +186,5 @@ def dicts_to_simple_namespace(dicts):
 
 if __name__ == '__main__':
     schemafile = r'C:\Users\emtyg\dev\novo\criterionai-packages\imageclassification\settings-schema.json'
-    with open(schemafile) as fp:
-        schema = json.load(fp)
-
+    schema = json.load(io_tools.read_file(schemafile))
     CriterionConfig("", "", "", {}, "", "", "", schema)

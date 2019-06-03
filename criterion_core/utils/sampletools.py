@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 def flatten_dataset(datasets):
     """
@@ -54,10 +55,9 @@ def split_datasets_by_class(datasets, split):
     s1, s2 = [], []
     for ds, dsv in datasets.items():
         for cat, samples in dsv.items():
-            mask = np.random.rand(len(samples)) >= split
-            s = np.array(samples)
-            s1.append(s[mask])
-            s2.append(s[~mask])
+            train, test = train_test_split(np.array(samples), test_size=int(len(samples) * split), random_state=42)
+            s1.append(train)
+            s2.append(test)
 
     return np.hstack(s1), np.hstack(s2)
 

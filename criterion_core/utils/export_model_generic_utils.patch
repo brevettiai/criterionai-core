@@ -1,0 +1,13 @@
+diff --git a/generic_utils.py "b/C:\\Users\\Michael\\.conda\\envs\\mlengine\\Lib\\site-packages\\tensorflow\\python\\keras\\utils\\generic_utils.py"
+index 2e56fa2..ffdc947 100644
+--- a/generic_utils.py
++++ "b/C:\\Users\\Michael\\.conda\\envs\\mlengine\\Lib\\site-packages\\tensorflow\\python\\keras\\utils\\generic_utils.py"
+@@ -260,6 +260,8 @@ def func_load(code, defaults=None, closure=None, globs=None):
+     closure = tuple(ensure_value_to_cell(_) for _ in closure)
+   try:
+     raw_code = codecs.decode(code.encode('ascii'), 'base64')
++    if os.name == 'nt':
++      raw_code = raw_code.replace(b'/', b'\\')
+   except (UnicodeEncodeError, binascii.Error):
+     raw_code = code.encode('raw_unicode_escape')
+   code = marshal.loads(raw_code)
