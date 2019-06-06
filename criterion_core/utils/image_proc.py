@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 import random
 
+interpolation_flag = dict(nearest=cv2.INTER_NEAREST, linear=cv2.INTER_LINEAR)
+
 
 def affine(sc, r1, r2, a, sh, t1, t2):
     ref = np.array([[r1, 0, 0],
@@ -23,13 +25,13 @@ def affine(sc, r1, r2, a, sh, t1, t2):
     return tra.dot(she.dot(ref.dot(scale.dot(rot))))
 
 
-def get_tforms(rois, target_shape):
+def get_tforms(rois, target_shape, input_shape):
     # Cropping:
     # tx, ty: offset
     # target_size gives image size
     sz = [0, 0]
     if len(rois) == 0:
-        rois = [[[0, 0], target_shape[1::-1]]]
+        rois = [[[0, 0], input_shape[1::-1]]]
     t_forms = [None] * len(rois)
     for ii, roi in enumerate(rois):
         crop_x = roi[0][1]
@@ -52,13 +54,13 @@ def random_affine_transform(target_shape,
     if augmentation is None:
         return np.eye(2, 3)
 
-    sc = (random.random() - 0.5) * 2 * augmentation.scaling_range
+    sc = (random.random() - 0.5) * 2 * (augmentation.scaling_range / 100)
 
     a = (random.random() - 0.5) * np.pi / 90 * augmentation.rotation_angle
     sh = (random.random() - 0.5) * 2 * augmentation.shear_range
 
-    t1 = (random.random() - 0.5) * 2 * augmentation.horizontal_translation_range
-    t2 = (random.random() - 0.5) * 2 * augmentation.vertical_translation_range
+    t1 = (random.random() - 0.5) * 2 * (augmentation.horizontal_translation_range / 100) * target_shape[1]
+    t2 = (random.random() - 0.5) * 2 * (augmentation.vertical_translation_range / 100) * target_shape[0]
 
     r1 = (-1 if random.random() < 0.5 else 1) if augmentation.flip_horizontal else 1
     r2 = (-1 if random.random() < 0.5 else 1) if augmentation.flip_vertical else 1
@@ -77,20 +79,21 @@ def random_affine_transform(target_shape,
 
     return A[0:2, :]
 
-
-def transform(im, A, target_shape):
+def transform(im, A, target_shape, interpolation=interpolation_flag['linear']):
     n_dim = im.ndim
     if n_dim > 2:
         im_t = im.copy()
         for ii in range(im.shape[2]):
-            im_t[:, :, ii] = cv2.warpAffine(im[:, :, ii], A, target_shape[1::-1], flags=cv2.INTER_NEAREST)
+            im_t[:, :, ii] = cv2.warpAffine(im[:, :, ii], A, target_shape[1::-1], flags=interpolation)
     else:
-        im_t = cv2.warpAffine(im, A, target_shape[1::-1], flags=cv2.INTER_NEAREST)
+        im_t = cv2.warpAffine(im, A, target_shape[1::-1], flags=interpolation)
     return im_t
 
 
-def apply_transforms(images, aug, t_forms, target_shape):
-    img_t = [np.concatenate([transform(im, aug.dot(t_form), target_shape) for t_form in t_forms], axis=0)/255.0 for im in images]
+def apply_transforms(images, aug, rois, target_shape, *args, **kwargs):
+    input_shape = images[0].shape
+    t_forms = get_tforms(rois, target_shape, input_shape)
+    img_t = [np.concatenate([transform(im, aug.dot(t_form), target_shape, *args, **kwargs) for t_form in t_forms], axis=0)/255.0 for im in images]
     for jj in range(len(img_t)):
         if img_t[jj].ndim == 2:
             img_t[jj] = np.expand_dims(img_t[jj], axis=-1)

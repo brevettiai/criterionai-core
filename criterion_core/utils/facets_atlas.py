@@ -20,8 +20,8 @@ def fill_array(args):
         img.thumbnail(atlas_shape[1:3])
         tmp = np.ctypeslib.as_array(shared_array).reshape(atlas_shape)
         tmp[idx] = img
-    except Exception:
-        print(Exception)
+    except Exception as e:
+        print(e)
         pass
 
 def create_atlas(samples, thumbnail_size=(64,64), channels=3):
@@ -48,9 +48,7 @@ def create_atlas(samples, thumbnail_size=(64,64), channels=3):
     return atlas
 
 
-def build_facets(samples, output_path, atlas_param=None):
-    atlas_param = atlas_param or {}
-
+def build_facets(samples, output_path, **atlas_param):
     io_tools.write_file(path.join(output_path, 'facets.json'), json.dumps(list(samples)))
 
     atlas = create_atlas(samples, **atlas_param)
