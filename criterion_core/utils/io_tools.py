@@ -39,8 +39,7 @@ def walk(folder_path):
     if "gs://" in folder_path:
         return gcs_io.gcs_walk(folder_path)
 
-    if os.path.exists(folder_path):
-        return os.walk(folder_path)
+    return os.walk(folder_path)
 
 
 async def _async_read_file(fn):
