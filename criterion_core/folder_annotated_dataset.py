@@ -1,6 +1,9 @@
 from .utils import io_tools
 import mimetypes
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_map=None, force_categories=False):
     """
@@ -65,10 +68,11 @@ def load_image_datasets(datasets, class_map=None, force_categories=False):
     datasets_ = {}
 
     for d in datasets:
+        log.debug("Loading dataset %r" % d['id'])
         datasets_[d['id']] = load_dataset(d,
-                                      d['name'],
                                      filter=filter_file_by_ending({'bmp', 'jpeg', 'jpg', 'png'}),
                                      category_map=class_map,
                                      force_categories=force_categories)
+        log.debug([(k, len(v)) for k, v in datasets_[d['id']].items()])
 
     return datasets_
