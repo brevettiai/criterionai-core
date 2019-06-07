@@ -14,7 +14,8 @@ COLOR_MODE = {1:cv2.IMREAD_GRAYSCALE,
               3:cv2.IMREAD_COLOR}
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
-                 shuffle=True, target_mode="classification", max_epoch_samples=np.inf):
+                 shuffle=True, target_mode="classification", max_epoch_samples=np.inf,
+                 interpolation='linear'):
         'Initialization'
         self.img_files = img_files
         self.batch_size = batch_size
@@ -24,6 +25,7 @@ class DataGenerator(keras.utils.Sequence):
         self.augmentation = augmentation
         self.target_shape = target_shape
         self.indices = None
+        self.interpolation = interpolation
         if classes is None:
             self.label_space = sorted(list(set([img_f['category'] for img_f in img_files])))
         else:
@@ -58,7 +60,8 @@ class DataGenerator(keras.utils.Sequence):
             if self.color_mode == cv2.IMREAD_COLOR:
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             aug = image_proc.random_affine_transform(self.target_shape, self.augmentation)
-            img_t = image_proc.apply_transforms([img], aug, self.rois, self.target_shape)
+            img_t = image_proc.apply_transforms([img], aug, self.rois, self.target_shape,
+                                                interpolation=self.interpolation)
 
             X[ii] = img_t[0]
         return X
