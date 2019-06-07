@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import random
 
-interpolation_flag = dict(nearest=cv2.INTER_NEAREST, linear=cv2.INTER_LINEAR)
+interpolation_flag = dict(nearest=cv2.INTER_NEAREST, linear=cv2.INTER_LINEAR, area=cv2.INTER_AREA)
 
 
 def affine(sc, r1, r2, a, sh, t1, t2):
@@ -79,7 +79,9 @@ def random_affine_transform(target_shape,
 
     return A[0:2, :]
 
-def transform(im, A, target_shape, interpolation=interpolation_flag['linear']):
+
+def transform(im, A, target_shape, interpolation='linear'):
+    interpolation = interpolation_flag[interpolation]
     n_dim = im.ndim
     if n_dim > 2:
         im_t = im.copy()
