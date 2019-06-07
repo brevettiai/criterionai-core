@@ -80,5 +80,5 @@ async def async_download_batch(img_files_batch):
 
 def download_batch(img_files_batch):
     loop = get_loop()
-    buffers = list(loop.run_until_complete(asyncio.wait((async_download_batch(img_files_batch), )))[0])[0].result()
+    buffers = list(loop.run_until_complete(asyncio.wait((async_download_batch(img_files_batch), ), timeout=300))[0])[0].result()
     return buffers
