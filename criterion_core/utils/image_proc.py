@@ -84,7 +84,7 @@ def transform(im, A, target_shape, interpolation='linear'):
     interpolation = interpolation_flag[interpolation]
     n_dim = im.ndim
     if n_dim > 2:
-        im_t = im.copy()
+        im_t = np.zeros(target_shape)
         for ii in range(im.shape[2]):
             im_t[:, :, ii] = cv2.warpAffine(im[:, :, ii], A, target_shape[1::-1], flags=interpolation)
     else:

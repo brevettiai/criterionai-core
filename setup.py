@@ -15,6 +15,7 @@ REQUIRED_PACKAGES = [
     'gcloud-aio-storage @ git+https://github.com/elempollon/gcloud-aio.git/#egg=master&subdirectory=storage',
     'google-auth==1.6.3',
     'google-cloud-storage==1.16.0',
+    'imgaug==0.2.9'
 ]
 
 setup(
