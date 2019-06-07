@@ -61,7 +61,12 @@ class DataGenerator(keras.utils.Sequence):
             if self.color_mode == cv2.IMREAD_COLOR:
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-            X[ii] = self.augmentation.augment_image(img)
+            img_t = self.augmentation.augment_image(img)
+
+            if np.ndim(img_t) == 2:
+                img_t = img_t[..., None]
+
+            X[ii] = img_t
 
         return X
 
