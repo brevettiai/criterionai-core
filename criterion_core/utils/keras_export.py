@@ -50,10 +50,10 @@ def export_model(keras_model, img_format, input_shape, export_path='tf_export', 
         model_dir=tf_model_path,
         keras_model=keras_model)
 
-    movedir(os.path.join(os.getcwd(), tf_model_path, 'keras'), os.path.join(os.getcwd(), tf_model_path))
+    movedir(os.path.join(tf_model_path, 'keras'), tf_model_path)
 
     export_path_output = estimator.export_savedmodel(
-        export_path,
+        export_path, checkpoint_path=os.path.join(tf_model_path, "keras_model.ckpt"),
         serving_input_receiver_fn=define_image_input_receiver(keras_model.input.name.split(":",1)[0], img_format, input_shape))
     export_path_output = str(export_path_output , encoding="utf-8")
     saved_model_tar = os.path.join(export_path_output, 'saved_model.tar.gz')
