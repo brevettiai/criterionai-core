@@ -15,7 +15,7 @@ COLOR_MODE = {1:cv2.IMREAD_GRAYSCALE,
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, img_files, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
                  shuffle=True, target_mode="classification", max_epoch_samples=np.inf,
-                 interpolation='linear'):
+                 interpolation='linear', anti_aliasing=False):
         'Initialization'
         self.img_files = img_files
         self.batch_size = batch_size
@@ -26,6 +26,7 @@ class DataGenerator(keras.utils.Sequence):
         self.target_shape = target_shape
         self.indices = None
         self.interpolation = interpolation
+        self.anti_aliasing = anti_aliasing
         if classes is None:
             self.label_space = sorted(list(set([img_f['category'] for img_f in img_files])))
         else:
@@ -61,7 +62,7 @@ class DataGenerator(keras.utils.Sequence):
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             aug = image_proc.random_affine_transform(self.target_shape, self.augmentation)
             img_t = image_proc.apply_transforms([img], aug, self.rois, self.target_shape,
-                                                interpolation=self.interpolation)
+                                                interpolation=self.interpolation, anti_aliasing=self.anti_aliasing)
 
             X[ii] = img_t[0]
         return X

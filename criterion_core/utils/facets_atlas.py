@@ -10,9 +10,9 @@ from . import io_tools
 import cv2
 
 
-def create_atlas(samples, thumbnail_size):
-    facet_gen = data_generator.DataGenerator(samples, augmentation=None, target_shape=thumbnail_size, shuffle=False,
-                                             interpolation='area')
+def create_atlas(samples, thumbnail_size, rois):
+    facet_gen = data_generator.DataGenerator(samples, augmentation=None, rois=rois, target_shape=thumbnail_size, shuffle=False,
+                                             interpolation='area', anti_aliasing=True)
 
     images = [None] * len(facet_gen)
     for ii in range(len(facet_gen)):
