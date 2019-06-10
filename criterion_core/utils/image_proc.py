@@ -33,20 +33,23 @@ def get_tforms(rois, target_shape, input_shape):
     if len(rois) == 0:
         rois = [[[0, 0], input_shape[1::-1]]]
     t_forms = [None] * len(rois)
+    target_shapes = [None] * len(rois)
     for ii, roi in enumerate(rois):
-        crop_x = roi[0][1]
-        crop_y = roi[0][0]
-        sz_x = roi[1][1] - roi[0][1]
+        crop_x = roi[0][0]
+        crop_y = roi[0][1]
+        sz_x = roi[1][0] - roi[0][0]
         if ii > 0:
-            assert sz[1] == sz_x
+            assert sz[0] == sz_x
         else:
-            sz[1] = sz_x
-        sz[0] += roi[1][0] - roi[0][0]
+            sz[0] = sz_x
+        sz[1] += roi[1][1] - roi[0][1]
         t_forms[ii] = np.array([[1, 0, -crop_x], [0, 1, -crop_y], [0, 0, 1]], dtype=np.float32)
+        target_shapes[ii] = [roi[1][0]-roi[0][0], roi[1][1]-roi[0][1], target_shape[-1]]
     sc = [target_shape[1-jj] / float(sz[jj]) for jj in range(2)]
     t_scale = np.array([[sc[1], 0, 0], [0, sc[0], 0], [0, 0, 1]], dtype=np.float32)
+    target_shapes = [tuple([int(ts[1-ii] * sc[1-ii]) for ii in range(2)]+[ts[-1]]) for ts in target_shapes]
     t_forms = [t_scale.dot(t_form) for t_form in t_forms]
-    return t_forms
+    return t_forms, target_shapes
 
 
 def random_affine_transform(target_shape,
@@ -94,8 +97,8 @@ def transform(im, A, target_shape, interpolation='linear'):
 
 def apply_transforms(images, aug, rois, target_shape, *args, **kwargs):
     input_shape = images[0].shape
-    t_forms = get_tforms(rois, target_shape, input_shape)
-    img_t = [np.concatenate([transform(im, aug.dot(t_form), target_shape, *args, **kwargs) for t_form in t_forms], axis=0)/255.0 for im in images]
+    t_forms, target_shapes = get_tforms(rois, target_shape, input_shape)
+    img_t = [np.concatenate([transform(im, aug.dot(t_form), ts, *args, **kwargs) for t_form, ts in zip(t_forms, target_shapes)], axis=0)/255.0 for im in images]
     for jj in range(len(img_t)):
         if img_t[jj].ndim == 2:
             img_t[jj] = np.expand_dims(img_t[jj], axis=-1)
