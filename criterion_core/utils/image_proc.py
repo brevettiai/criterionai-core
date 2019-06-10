@@ -83,10 +83,9 @@ def random_affine_transform(target_shape,
     return A[0:2, :]
 
 
-def transform(im, A, target_shape, interpolation='linear', anti_aliasing=False):
+def transform(im, A, target_shape, interpolation='linear', anti_aliasing=None):
     if anti_aliasing:
-        pixel_scale = 0.5
-        sigmas = [pixel_scale * float(im.shape[1-ii]) / target_shape[1-ii] for ii in range(2)]
+        sigmas = [anti_aliasing * float(im.shape[1-ii]) / target_shape[1-ii] for ii in range(2)]
     interpolation = interpolation_flag[interpolation]
     n_dim = im.ndim
     if n_dim > 2:
@@ -96,7 +95,7 @@ def transform(im, A, target_shape, interpolation='linear', anti_aliasing=False):
             im_t[:, :, ii] = cv2.warpAffine(im_ii, A, target_shape[1::-1], flags=interpolation)
     else:
         im_ii = cv2.GaussianBlur(im, (0, 0), *sigmas) if anti_aliasing else im
-        im_t = cv2.warpAffine(im, A, target_shape[1::-1], flags=interpolation)
+        im_t = cv2.warpAffine(im_ii, A, target_shape[1::-1], flags=interpolation)
     return im_t
 
 
