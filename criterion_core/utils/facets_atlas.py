@@ -11,8 +11,9 @@ import cv2
 
 
 def create_atlas(samples, thumbnail_size, rois):
-    facet_gen = data_generator.DataGenerator(samples, augmentation=None, rois=rois, target_shape=thumbnail_size, shuffle=False,
-                                             interpolation='linear', anti_aliasing=0.6)
+    facet_gen = data_generator.DataGenerator(samples, augmentation=None, rois=rois,
+                                             target_shape=thumbnail_size, shuffle=False,
+                                             interpolation='linear', anti_aliasing=0.5)
 
     images = [None] * len(facet_gen)
     for ii in range(len(facet_gen)):
