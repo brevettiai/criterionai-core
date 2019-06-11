@@ -89,7 +89,7 @@ def transform(im, A, target_shape, interpolation='linear', anti_aliasing=None):
     interpolation = interpolation_flag[interpolation]
     n_dim = im.ndim
     if n_dim > 2:
-        im_t = im.copy()
+        im_t = np.zeros(target_shape)
         for ii in range(im.shape[2]):
             im_ii = cv2.GaussianBlur(im[:, :, ii],(0,0), *sigmas) if anti_aliasing else im[:, :, ii]
             im_t[:, :, ii] = cv2.warpAffine(im_ii, A, target_shape[1::-1], flags=interpolation)
