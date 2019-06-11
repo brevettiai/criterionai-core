@@ -55,7 +55,7 @@ class AffineTransformation(ia.Augmenter):
 
 def get_augmentation_pipeline(settings, target_shape, rois):
 
-    if settings.enable:
+    if settings is not None and settings.enable:
         return ia.Sequential(
             AffineTransformation(settings, target_shape, rois)
         )
