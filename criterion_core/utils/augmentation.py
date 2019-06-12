@@ -29,7 +29,6 @@ class AffineTransformation(ia.Augmenter):
     """
     Wrapper for original affine transformation code to imgaug
     """
-
     def __init__(self, settings, target_shape, rois,
                  name=None, deterministic=False, random_state=None, **kwargs):
         super().__init__(name=name, deterministic=deterministic, random_state=random_state)
@@ -37,19 +36,6 @@ class AffineTransformation(ia.Augmenter):
         self.settings = settings
         self.rois = rois
         self.kwargs = kwargs
-
-
-class AffineTransformation(ia.Augmenter):
-    """
-    Wrapper for original affine transformation code to imgaug
-    """
-
-    def __init__(self, settings, target_shape, rois,
-                 name=None, deterministic=False, random_state=None):
-        super().__init__(name=name, deterministic=deterministic, random_state=random_state)
-        self.target_shape = target_shape
-        self.settings = settings
-        self.rois = rois
 
     def _augment_images(self, images, random_state, parents, hooks):
         aug = image_proc.random_affine_transform(self.target_shape, self.settings)
