@@ -7,37 +7,26 @@ from criterion_core.utils.augmentation import get_augmentation_pipeline
 from . import io_tools
 
 
-def unique_classes(samples):
-    seen = set()
-    for sample in samples:
-        for cat in samples.get("category", []):
-            if cat not in seen:
-                seen.add(cat)
-                yield cat
-
-
-COLOR_MODE = {1: cv2.IMREAD_GRAYSCALE,
-              3: cv2.IMREAD_COLOR}
-
+COLOR_MODE = {1:cv2.IMREAD_GRAYSCALE,
+              3:cv2.IMREAD_COLOR}
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, samples, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
                  shuffle=True, target_mode="classification", max_epoch_samples=np.inf,
-                 interpolation='linear'):
+                 interpolation='linear', anti_aliasing=False):
         'Initialization'
         self.samples = samples
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.rois = rois
         self.target_mode = target_mode
-        self.augmentation = get_augmentation_pipeline(augmentation, target_shape, rois)
+        self.augmentation = get_augmentation_pipeline(augmentation, target_shape, rois, interpolation=interpolation, anti_aliasing=anti_aliasing)
         self.target_shape = target_shape
         self.indices = None
         self.interpolation = interpolation
         class_space = set(s['category'] for s in samples)
         self.classes = classes or sorted(set(item for sublist in class_space for item in sublist))
         self.label_space = self.categorical_encoder(self.classes, class_space)
-
         self.color_mode = COLOR_MODE[target_shape[2]]
         self.max_epoch_samples = max_epoch_samples
         self.on_epoch_end()

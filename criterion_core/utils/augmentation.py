@@ -29,6 +29,21 @@ class AffineTransformation(ia.Augmenter):
     """
     Wrapper for original affine transformation code to imgaug
     """
+
+    def __init__(self, settings, target_shape, rois,
+                 name=None, deterministic=False, random_state=None, **kwargs):
+        super().__init__(name=name, deterministic=deterministic, random_state=random_state)
+        self.target_shape = target_shape
+        self.settings = settings
+        self.rois = rois
+        self.kwargs = kwargs
+
+
+class AffineTransformation(ia.Augmenter):
+    """
+    Wrapper for original affine transformation code to imgaug
+    """
+
     def __init__(self, settings, target_shape, rois,
                  name=None, deterministic=False, random_state=None):
         super().__init__(name=name, deterministic=deterministic, random_state=random_state)
@@ -38,7 +53,7 @@ class AffineTransformation(ia.Augmenter):
 
     def _augment_images(self, images, random_state, parents, hooks):
         aug = image_proc.random_affine_transform(self.target_shape, self.settings)
-        images = image_proc.apply_transforms(images, aug, self.rois, self.target_shape)
+        images = image_proc.apply_transforms(images, aug, self.rois, self.target_shape, **self.kwargs)
         return images
 
     def _augment_heatmaps(self, heatmaps, random_state, parents, hooks):
@@ -53,13 +68,13 @@ class AffineTransformation(ia.Augmenter):
     def get_parameters(self):
         return []
 
-def get_augmentation_pipeline(settings, target_shape, rois):
 
+def get_augmentation_pipeline(settings, target_shape, rois, **kwargs):
     if settings is not None and settings.enable:
         return ia.Sequential(
-            AffineTransformation(settings, target_shape, rois)
+            AffineTransformation(settings, target_shape, rois, **kwargs)
         )
     else:
         return ia.Sequential(
-            AffineTransformation(None, target_shape, rois)
+            AffineTransformation(None, target_shape, rois, **kwargs)
         )

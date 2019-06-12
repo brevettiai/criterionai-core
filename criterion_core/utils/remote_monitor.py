@@ -1,8 +1,11 @@
 import json
 import logging
+
 import requests
 from tensorflow.keras.callbacks import Callback
+
 from criterion_core.utils.numpy_json import NumpyEncoder
+
 
 class RemoteMonitor(Callback):
     """Callback used to stream events to a server.
