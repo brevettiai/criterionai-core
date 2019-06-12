@@ -25,11 +25,9 @@ class DataGenerator(keras.utils.Sequence):
         self.shuffle = shuffle
         self.rois = rois
         self.target_mode = target_mode
-        self.augmentation = get_augmentation_pipeline(augmentation, target_shape, rois)
+        self.augmentation = get_augmentation_pipeline(augmentation, target_shape, rois, interpolation=interpolation, anti_aliasing=anti_aliasing)
         self.target_shape = target_shape
         self.indices = None
-        self.interpolation = interpolation
-        self.anti_aliasing = anti_aliasing
         if classes is None:
             self.label_space = sorted(list(set([img_f['category'] for img_f in img_files])))
         else:
