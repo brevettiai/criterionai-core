@@ -60,4 +60,6 @@ def get_augmentation_pipeline(settings, target_shape, rois):
             AffineTransformation(settings, target_shape, rois)
         )
     else:
-        return ia.Sequential()
+        return ia.Sequential(
+            AffineTransformation(None, target_shape, rois)
+        )
