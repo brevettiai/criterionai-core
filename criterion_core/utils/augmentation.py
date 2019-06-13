@@ -6,6 +6,19 @@ from criterion_core.utils import image_proc
 
 def augmentation_schema(enable=True, vertical_translation=0, horizontal_translation=0, scaling=0, rotation=5, shear=0,
                         flipl=False, flipr=False, color_correct=False):
+    """
+    Build data augmentation settings schema
+    :param enable:
+    :param vertical_translation:
+    :param horizontal_translation:
+    :param scaling:
+    :param rotation:
+    :param shear:
+    :param flipl:
+    :param flipr:
+    :param color_correct:
+    :return:
+    """
     return [
         schema.label("Data Augmentation"),
         schema.checkbox("Enable data augmentation?", "data_augmentation.enable", enable, False),
@@ -56,6 +69,14 @@ class AffineTransformation(ia.Augmenter):
 
 
 def get_augmentation_pipeline(settings, target_shape, rois, **kwargs):
+    """
+    Utility model generating the imgaug data transform pipeline
+    :param settings:
+    :param target_shape:
+    :param rois:
+    :param kwargs:
+    :return:
+    """
     if settings is not None and settings.enable:
         return ia.Sequential(
             AffineTransformation(settings, target_shape, rois, **kwargs)
