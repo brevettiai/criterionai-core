@@ -82,3 +82,5 @@ class DataGenerator(keras.utils.Sequence):
             return X, y
         elif self.target_mode=="input":
             return X, X
+        elif self.target_mode == "samples":
+            return X, img_files_batch
