@@ -25,7 +25,7 @@ class DataGenerator(keras.utils.Sequence):
         self.indices = None
         self.interpolation = interpolation
         class_space = set(s['category'] for s in samples)
-        self.classes = classes or sorted(set(item for sublist in class_space for item in sublist))
+        self.classes = classes or sorted(set(item for sublist in class_space for item in sublist if item != "__UNLABELED__"))
         self.label_space = self.categorical_encoder(self.classes, class_space)
         self.color_mode = COLOR_MODE[target_shape[2]]
         self.max_epoch_samples = max_epoch_samples
@@ -37,7 +37,10 @@ class DataGenerator(keras.utils.Sequence):
         space = {}
         for v in class_space:
             if len(v) > 0:
-                space[v] = np.vstack([output[classes.index(x)] for x in set(v)]).sum(0)
+                try:
+                    space[v] = np.vstack([output[classes.index(x)] for x in set(v)]).sum(0)
+                except ValueError as ex:
+                    space[v] = np.full(len(classes), np.nan)
             else:
                 space[v] = np.zeros(len(classes))
         return space
