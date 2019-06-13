@@ -166,6 +166,8 @@ def in_dicts(d, uri):
     :return:
     """
     if len(uri) > 1:
+        if uri[0] not in d:
+            return False
         return in_dicts(d[uri[0]], uri[1:])
     else:
         return uri[0] in d
