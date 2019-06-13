@@ -1,4 +1,6 @@
 # https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
+import logging
+
 import cv2
 import numpy as np
 from tensorflow import keras
@@ -6,26 +8,29 @@ from tensorflow import keras
 from criterion_core.utils.augmentation import get_augmentation_pipeline
 from . import io_tools
 
+log = logging.getLogger(__name__)
+COLOR_MODE = {1: cv2.IMREAD_GRAYSCALE,
+              3: cv2.IMREAD_COLOR}
 
-COLOR_MODE = {1:cv2.IMREAD_GRAYSCALE,
-              3:cv2.IMREAD_COLOR}
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, samples, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
                  shuffle=True, target_mode="classification", max_epoch_samples=np.inf,
                  interpolation='linear', anti_aliasing=False):
-        'Initialization'
+
         self.samples = samples
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.rois = rois
         self.target_mode = target_mode
-        self.augmentation = get_augmentation_pipeline(augmentation, target_shape, rois, interpolation=interpolation, anti_aliasing=anti_aliasing)
+        self.augmentation = get_augmentation_pipeline(augmentation, target_shape, rois, interpolation=interpolation,
+                                                      anti_aliasing=anti_aliasing)
         self.target_shape = target_shape
         self.indices = None
         self.interpolation = interpolation
         class_space = set(s['category'] for s in samples)
-        self.classes = classes or sorted(set(item for sublist in class_space for item in sublist if item != "__UNLABELED__"))
+        self.classes = classes or sorted(
+            set(item for sublist in class_space for item in sublist if item != "__UNLABELED__"))
         self.label_space = self.categorical_encoder(self.classes, class_space)
         self.color_mode = COLOR_MODE[target_shape[2]]
         self.max_epoch_samples = max_epoch_samples
@@ -40,6 +45,7 @@ class DataGenerator(keras.utils.Sequence):
                 try:
                     space[v] = np.vstack([output[classes.index(x)] for x in set(v)]).sum(0)
                 except ValueError as ex:
+                    log.exception("Data for generator contains labels not in accepted classes")
                     space[v] = np.full(len(classes), np.nan)
             else:
                 space[v] = np.zeros(len(classes))
@@ -85,3 +91,5 @@ class DataGenerator(keras.utils.Sequence):
             return X, y
         elif self.target_mode == "input":
             return X, X
+        elif self.target_mode == "samples":
+            return X, samples
