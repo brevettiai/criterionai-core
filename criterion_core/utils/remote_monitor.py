@@ -1,17 +1,10 @@
 import json
 import logging
+
 import requests
-import numpy as np
 from tensorflow.keras.callbacks import Callback
 
-
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, np.number):
-            return obj.item()
-        return json.JSONEncoder.default(self, obj)
+from criterion_core.utils.numpy_json import NumpyEncoder
 
 
 class RemoteMonitor(Callback):

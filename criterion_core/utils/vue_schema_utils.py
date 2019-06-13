@@ -1,7 +1,7 @@
 def label(label):
     return dict(
-        type=label,
-        label="Export"
+        type="label",
+        label=label
     )
 
 

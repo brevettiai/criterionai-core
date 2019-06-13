@@ -36,10 +36,11 @@ def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_
             path = sep_.join([root, file])
             sample = dict(path=path) if filter is None else filter(path, category)
 
-            if sample is not None and len(category)>0 and mimetypes.guess_type(file)[0].startswith('image/'):
+            if sample is not None and mimetypes.guess_type(file)[0].startswith('image/'):
                 sample["dataset"] = dataset['name']
                 sample["id"] = dataset['id']
-                samples.setdefault(category, []).append(sample)
+
+                samples.setdefault(category if isinstance(category, str) else "/".join(category), []).append(sample)
     return samples
 
 def filter_file_by_ending(ftypes):
@@ -52,7 +53,7 @@ def filter_file_by_ending(ftypes):
     def _filter(path, category):
         ftype = path.rsplit('.', 1)[-1]
         if ftype.lower() in ftypes:
-            return dict(path=path, category=category)
+            return dict(path=path, category=(category,) if isinstance(category, str) else tuple(category))
         else:
             return None
 
