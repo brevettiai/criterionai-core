@@ -17,7 +17,7 @@ def augmentation_schema(enable=True, vertical_translation=0, horizontal_translat
                             default=scaling, required=True, min=0, max=100),
         schema.number_input("Rotation range in degrees", "data_augmentation.rotation_angle",
                             default=rotation, required=True, min=0, max=180),
-        schema.number_input("Vertical translation range in percent", "data_augmentation.vertical_translation_range",
+        schema.number_input("Shear range", "data_augmentation.vertical_translation_range",
                             default=shear, required=True, min=0, max=1, step=0.1),
         schema.checkbox("Can images be flipped horizontally?", "data_augmentation.flip_horizontal", flipl, True),
         schema.checkbox("Can images be flipped vertically?", "data_augmentation.flip_vertical", flipr, True),
