@@ -80,8 +80,9 @@ def generate_model_parameter_schema(path="model/settings-schema.json", schema=ge
 
     required_manifest = 'include %s' % path
     with open("MANIFEST.in", "a+") as fp:
+        fp.seek(0)
         for line in fp:
             if required_manifest == line:
                 return
         else:
-            fp.write(required_manifest)
+            fp.write("\n" + required_manifest)

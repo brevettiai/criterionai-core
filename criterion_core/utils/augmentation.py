@@ -6,6 +6,19 @@ from criterion_core.utils import image_proc
 
 def augmentation_schema(enable=True, vertical_translation=0, horizontal_translation=0, scaling=0, rotation=5, shear=0,
                         flipl=False, flipr=False, color_correct=False):
+    """
+    Build data augmentation settings schema
+    :param enable:
+    :param vertical_translation:
+    :param horizontal_translation:
+    :param scaling:
+    :param rotation:
+    :param shear:
+    :param flipl:
+    :param flipr:
+    :param color_correct:
+    :return:
+    """
     return [
         schema.label("Data Augmentation"),
         schema.checkbox("Enable data augmentation?", "data_augmentation.enable", enable, False),
@@ -17,7 +30,7 @@ def augmentation_schema(enable=True, vertical_translation=0, horizontal_translat
                             default=scaling, required=True, min=0, max=100),
         schema.number_input("Rotation range in degrees", "data_augmentation.rotation_angle",
                             default=rotation, required=True, min=0, max=180),
-        schema.number_input("Vertical translation range in percent", "data_augmentation.vertical_translation_range",
+        schema.number_input("Shear range", "data_augmentation.shear_range",
                             default=shear, required=True, min=0, max=1, step=0.1),
         schema.checkbox("Can images be flipped horizontally?", "data_augmentation.flip_horizontal", flipl, True),
         schema.checkbox("Can images be flipped vertically?", "data_augmentation.flip_vertical", flipr, True),
@@ -54,12 +67,21 @@ class AffineTransformation(ia.Augmenter):
     def get_parameters(self):
         return []
 
-def get_augmentation_pipeline(settings, target_shape, rois, **kwargs):
 
+def get_augmentation_pipeline(settings, target_shape, rois, **kwargs):
+    """
+    Utility model generating the imgaug data transform pipeline
+    :param settings:
+    :param target_shape:
+    :param rois:
+    :param kwargs:
+    :return:
+    """
     if settings is not None and settings.enable:
         return ia.Sequential(
             AffineTransformation(settings, target_shape, rois, **kwargs)
         )
     else:
         return ia.Sequential(
-            AffineTransformation(None, target_shape, rois, **kwargs))
+            AffineTransformation(None, target_shape, rois, **kwargs)
+        )
