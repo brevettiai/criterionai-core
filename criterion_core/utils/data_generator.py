@@ -87,7 +87,7 @@ class DataGenerator(keras.utils.Sequence):
         samples = [self.samples[k] for k in batch_indices]
         X = self.__data_generation(samples)
         if self.target_mode == "classification":
-            y = np.stack(self.label_space[s['category']] for s in samples)
+            y = np.stack([self.label_space[s['category']] for s in samples])
             return X, y
         elif self.target_mode == "input":
             return X, X
