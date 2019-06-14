@@ -1,4 +1,5 @@
 from .utils import io_tools
+from .utils import path
 import mimetypes
 import os
 import logging
@@ -20,24 +21,20 @@ def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_
 
     category_map = {} if category_map is None else category_map
 
-    sep_ = "/" if "://" in dataset["bucket"] else os.path.sep
-
     for root, _, files in io_tools.walk(dataset["bucket"]):
-        dir_ = root[:-1] if root.endswith(sep_) else root
-        category = dir_.rsplit(sep_, category_depth)
-
-        category = category[-1] if category_depth == 1 else category[1:]
-
+        folders = path.get_folders(path.join(root, "dummy.ext"), dataset["bucket"])
+        category = (folders if len(folders) else [None])[-1] if category_depth == 1 else "/".join(folders[-category_depth:])
         category = category_map.get(category, category)
         if force_categories and category not in list(category_map.values()):
             continue
 
         for file in files:
-            path = sep_.join([root, file])
-            sample = dict(path=path) if filter is None else filter(path, category)
+            full_path = path.join(root, file)
+            sample = dict(path=full_path) if filter is None else filter(full_path, category)
 
             if sample is not None and mimetypes.guess_type(file)[0].startswith('image/'):
                 sample["dataset"] = dataset['name']
+                sample["bucket"] = dataset['bucket']
                 sample["id"] = dataset['id']
 
                 samples.setdefault(category if isinstance(category, str) else "/".join(category), []).append(sample)
@@ -50,10 +47,10 @@ def filter_file_by_ending(ftypes):
     :return:
     """
 
-    def _filter(path, category):
-        ftype = path.rsplit('.', 1)[-1]
+    def _filter(file_path, category):
+        ftype = file_path.rsplit('.', 1)[-1]
         if ftype.lower() in ftypes:
-            return dict(path=path, category=(category,) if isinstance(category, str) else tuple(category))
+            return dict(path=file_path, category=(category,) if isinstance(category, str) else tuple(category))
         else:
             return None
 
