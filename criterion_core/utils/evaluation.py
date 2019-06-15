@@ -52,7 +52,7 @@ def tagged_pivot_classification_summary(classification_summary, ds_tag_records):
     # adding dataset url
     tagged_classification_summary = []
     for cs in classification_summary:
-        cs["dataset_url"] = "https://app.criterion.ai/" + cs["id"]
+        cs["dataset_url"] = "https://app.criterion.ai/data/" + cs["id"]
         tags = ds_tag_records[cs["id"]]
         for tt in tags:
             tag_cs = copy.deepcopy(cs)
