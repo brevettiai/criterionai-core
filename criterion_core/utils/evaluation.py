@@ -35,8 +35,8 @@ def get_classification_summary(class_names, prediction_output, class_weights, cl
         accepted = prediction == class_weights
         key = "-".join((po["id"], folder, prediction))
         classification_cnt.setdefault(key, {'count': 0, "categories": po["category"], "prediction": prediction,
-                                            "sample_quality": ["reject", "accept"][accept_class], "id": po["id"],
-                                            "Folder": folder,
+                                            "sample_quality": ["reject", "accept"][accept_class],
+                                            "Folder": folder,  "id": po["id"],
                                             "decision": ["reject", "accept"][accepted]})["count"] += 1
     classification_summary = []
     for kk, vv in classification_cnt.items():
@@ -56,6 +56,8 @@ def tagged_pivot_classification_summary(classification_summary, ds_tag_records):
         tags = ds_tag_records[cs["id"]]
         for tt in tags:
             tag_cs = copy.deepcopy(cs)
+            tag_cs["id"] = tag_cs["unique_id"]
+            del tag_cs["unique_id"]
             tag_cs.update(tt)
             tagged_classification_summary.append(tag_cs)
     return tagged_classification_summary
