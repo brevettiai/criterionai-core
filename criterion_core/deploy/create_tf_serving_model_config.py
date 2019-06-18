@@ -23,7 +23,7 @@ if __name__ == "__main__":
         model_config = model_server_config_pb2.ModelConfig()
         model_config.model_platform = "tensorflow"
         model_config.name = folder
-        model_config.base_path = os.path.join(os.path.abspath(base) + folder)
+        model_config.base_path = os.path.join(os.path.abspath(base), folder)
 
         ## Logging config not working in tf serving version 1.13
         #model_config.logging_config.sampling_config.sampling_rate = 0.1
