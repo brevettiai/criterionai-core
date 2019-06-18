@@ -1,14 +1,27 @@
-from flask import Flask, request, jsonify, abort
-from base64 import b64decode
-import json
 import argparse
+import json
 import os
+from base64 import b64decode
+
+from flask import Flask, request, jsonify
 
 
 class TFServingMock:
+    """
+    Tensorflow serving mock server
+    Implements the tensorflow serving prediction and status apis
+    """
     app = Flask(__name__)
 
-    def __init__(self, model_config=None, monitoring_config=None, save_prediction_path=None, save_prediction_name="prediction_{model}_{version}_{idx:03d}.bmp"):
+    def __init__(self, model_config=None, monitoring_config=None, save_prediction_path=None,
+                 save_prediction_name="prediction_{model}_{version}_{idx:03d}.bmp"):
+        """
+
+        :param model_config: Model config file (protobuf)
+        :param monitoring_config:  Monitoring config file (protobuf) not in use
+        :param save_prediction_path: Path to save inbound requests
+        :param save_prediction_name: Format string for generation of filename, allowed keys are (model,version,idx)
+        """
         self.model_config = model_config
         self.save_prediction_path = save_prediction_path
         self.save_prediction_name = save_prediction_name
@@ -16,7 +29,7 @@ class TFServingMock:
             os.makedirs(save_prediction_path, exist_ok=True)
 
         if model_config is not None:
-            self.models = {m["name"]:m for m in model_config["model_config_list"]["config"]}
+            self.models = {m["name"]: m for m in model_config["model_config_list"]["config"]}
         self.build_endpoints()
         self.prediction_idx = 0
 
@@ -29,10 +42,9 @@ class TFServingMock:
         """
 
     def status(self, model, version=None):
-
         if self.model_config is not None:
             if model not in self.models:
-                return jsonify({"error": "Could not find any versions of model %s" % model }), 404
+                return jsonify({"error": "Could not find any versions of model %s" % model}), 404
 
         model_basepath = self.models[model]["base_path"].replace("\\\\", "\\")
         versions = list(sorted((int(x) for x in os.listdir(model_basepath) if x.isdigit()), reverse=True))
@@ -53,10 +65,7 @@ class TFServingMock:
                     ),
                 ))
 
-
         return jsonify({"model_version_status": status})
-
-
 
     def predict(self, model, version=None):
         self.prediction_idx += 1
@@ -74,7 +83,7 @@ class TFServingMock:
 
         if self.model_config is not None:
             if not model in self.models:
-                return jsonify({"error": "Could not find any versions of model %s" % model }), 404
+                return jsonify({"error": "Could not find any versions of model %s" % model}), 404
 
         response = {"predictions": [[1, 0, 0, 0]]}
 
@@ -90,13 +99,19 @@ class TFServingMock:
 
 
 def pbParse(lines, data=None):
+    """
+    Mini specificationless protobuf parser
+    :param lines: list of lines to parse
+    :param data: dict to update with data
+    :return: protobuf string parsed as dict
+    """
     if data is None:
         data = {}
 
     while len(lines) > 0:
         line = lines[0]
         ld = line.split(" ")
-        if ld[0].endswith(":"): # Parse key/value
+        if ld[0].endswith(":"):  # Parse key/value
             ld = line.split(" ")
             if ld[0].endswith(":"):
                 key = ld[0][:-1]
@@ -106,7 +121,7 @@ def pbParse(lines, data=None):
                     value = float(ld[1])
                 data[key] = value
 
-        elif ld[-1].endswith("{"): # Parse dict
+        elif ld[-1].endswith("{"):  # Parse dict
             key = lines[0].split(" ")[0]
 
             count = 1
@@ -131,17 +146,26 @@ def pbParse(lines, data=None):
 
 
 def pbLoads(data):
+    """
+    Utility function for protobuf parsing
+    :param data: filecontents
+    :return: protobuf string parsed as dict
+    """
     lines = [x.strip() for x in data.split("\n")]
     return pbParse(lines)
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_config_file', help='', required=False)
-    parser.add_argument('--monitoring_config_file', help='', required=False)
-    parser.add_argument('--output', help='', required=False)
+    parser.add_argument('--model_config_file', help='Tensorflow serving model configuration file', required=False)
+    parser.add_argument('--monitoring_config_file',
+                        help='Tensorflow serving metrics congifuration file (Not implemented)', required=False)
+    parser.add_argument('--output', help='Output directory if images should be logged, standard is .bmp files',
+                        required=False)
 
     args = parser.parse_args()
     return args
+
 
 if __name__ == "__main__":
     args = parse_args()
