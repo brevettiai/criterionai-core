@@ -15,6 +15,14 @@ def movedir(srcdir, targetdir):
         shutil.move(os.path.join(srcdir, file), os.path.join(targetdir, file))
 
 
+def get_folders(path, bucket):
+    sp = path.split('://', 1)
+    rel_path = path.replace(bucket, '')
+    pathsep = '/' if len(sp) == 2 else os.path.sep
+
+    return rel_path.strip(pathsep).split(pathsep)[:-1]
+
+
 def join(*paths):
     """
     Join os paths and urls

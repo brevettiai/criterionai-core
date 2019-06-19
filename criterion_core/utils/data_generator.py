@@ -81,15 +81,17 @@ class DataGenerator(keras.utils.Sequence):
 
         return X
 
-    def __getitem__(self, index):
-        'Generate one batch of data'
+    def get_batch(self, index):
         batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
         samples = [self.samples[k] for k in batch_indices]
         X = self.__data_generation(samples)
+        return samples, X
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        samples, X = self.get_batch(index)
         if self.target_mode == "classification":
             y = np.stack([self.label_space[s['category']] for s in samples])
             return X, y
         elif self.target_mode == "input":
             return X, X
-        elif self.target_mode == "samples":
-            return X, samples
