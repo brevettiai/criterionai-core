@@ -68,7 +68,7 @@ class CriterionConfig:
         return path.join(self._temporary_path.name, *paths)
 
     def artifact_path(self, *paths):
-        io_tools.make_dirs(path.join(self.job_dir, "artifacts"))
+        io_tools.make_dirs(path.join(self.job_dir, "artifacts", *paths[:-1]))
         return path.join(self.job_dir, "artifacts", *paths)
 
     def upload_chart(self, name, vegalite_json):
