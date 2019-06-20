@@ -1,11 +1,12 @@
 from criterion_core.utils import path
+from criterion_core.utils import tag_utils
 import copy
 
 
-def create_classification_summary(devel_pred_output, class_list):
+def create_classification_summary(datasets, args, devel_pred_output, class_list):
     classification_summary = get_classification_summary(class_list, devel_pred_output)
     classification_summary = add_outlier_classification_summary(classification_summary, class_list[0])
-    ds_tag_records, tag_fields = tag_utils.get_dataset_tag_records(args, config.datasets)
+    ds_tag_records, tag_fields = tag_utils.get_dataset_tag_records(args, datasets)
     tag_classification_summary = tagged_pivot_classification_summary(classification_summary, ds_tag_records)
     all_fields = tag_fields + [(kk, kk) for kk in classification_summary[0].keys() if kk not in ["id"]]
 
