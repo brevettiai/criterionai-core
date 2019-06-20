@@ -70,9 +70,9 @@ class TFServingMock:
     def predict(self, model, version=None):
         self.prediction_idx += 1
         length = int(request.headers.get("Content-Length", 0))
-        payload = json.loads(request.data.decode("utf8")) if length > 0 else {}
 
         if self.save_prediction_path is not None:
+            payload = json.loads(request.data.decode("utf8")) if length > 0 else {}
             fname = os.path.join(self.save_prediction_path,
                                  self.save_prediction_name.format(idx=self.prediction_idx,
                                                                   model=model,
@@ -169,9 +169,12 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    with open(args.model_config_file) as fp:
-        model_config = fp.read()
+    if args.model_config_file:
+        with open(args.model_config_file) as fp:
+            model_config = fp.read()
+        model_config = pbLoads(model_config)
+    else:
+        model_config = None
 
-    model_config = pbLoads(model_config)
     serving = TFServingMock(model_config, save_prediction_path=args.output)
-    serving.app.run(port=5001, debug=True)
+    serving.app.run(port=8501, debug=True)
