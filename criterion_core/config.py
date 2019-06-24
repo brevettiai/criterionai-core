@@ -18,7 +18,7 @@ class CriterionConfig:
     """
 
     def __init__(self, job_dir, id, name, datasets, settings, api_key, host_name, charts_url, complete_url, remote_url,
-                 schema, check_required_settings=True, **kwargs):
+                 schema, check_required_settings=True, root_tags=None, **kwargs):
         """
         :param schema: JSON schema used for model definition
         :param parameters: setup parameters overwriting default schema values
@@ -28,6 +28,7 @@ class CriterionConfig:
         self.name = name
         self.datasets = datasets
         self.settings = merge_settings(schema, settings, check_required_settings)
+        self.tags = root_tags
 
         self.api_key = api_key
         self.host_name = host_name
@@ -70,6 +71,22 @@ class CriterionConfig:
     def artifact_path(self, *paths):
         io_tools.make_dirs(path.join(self.job_dir, "artifacts", *paths[:-1]))
         return path.join(self.job_dir, "artifacts", *paths)
+
+    def upload_pivot_data(self, summary, tag_fields, summary_path=None, fields_path=None):
+        if summary_path is None:
+            summary_path = self.artifact_path("pivot", "classification_summary_{}.json".format(self.id))
+
+        if fields_path is None:
+            fields_path = self.artifact_path("pivot", "summary_fields_{}.json".format(self.id) )
+
+
+        log.info("Uploading summary to {}".format(summary_path))
+        io_tools.write_file(summary_path, json.dumps(summary))
+
+        log.info("Uploading summary fields to {}".format(fields_path))
+
+        io_tools.write_file(fields_path,
+                            json.dumps(tag_fields))
 
     def upload_chart(self, name, vegalite_json):
         charts_url = '{}{}&name={}'.format(self.host_name, self.api_endpoints['charts'], name)
