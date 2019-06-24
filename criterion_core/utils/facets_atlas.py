@@ -18,7 +18,7 @@ def create_atlas(samples, thumbnail_size, rois):
     images = [None] * len(facet_gen)
     for ii in range(len(facet_gen)):
         images[ii], y = facet_gen[ii]
-    images = np.squeeze(np.concatenate(images)*255, axis=-1).astype(np.uint8)
+    images = np.squeeze(np.concatenate(images)*255).astype(np.uint8)
     atlas_size = int(math.ceil(math.sqrt(len(images))))
     atlas = tile2d(images, (atlas_size, atlas_size))
     return atlas

@@ -17,11 +17,12 @@ def _sample_predictor(model, data_generator, output_index=None):
 
         dfs = pd.DataFrame.from_records(list(samples))
         dfp = pd.DataFrame(outputs, columns=class_names)
-        dff = dfs.apply(lambda x: "/".join(pd.Series(path.get_folders(x["path"], x["bucket"]))), axis=1)
+        dff = dfs.apply(lambda x: pd.Series(path.get_folders(x["path"], x["bucket"])[-1]), axis=1)
+        dff.columns = ["folder"]
         df = pd.concat(
             (dfs,
              dfp.add_prefix('prob/'),
-             dff.rename('folder'),
+             dff,
              dfp.idxmax(axis=1).rename("prediction")), axis=1)
         df.dataset_id = df.dataset_id.astype('category')
         yield df
@@ -36,21 +37,50 @@ def pivot_dataset_tags(datasets, tags):
         df["dataset_id"] = pd.Series(ds["id"], index=df.index, dtype="category")
         yield df
 
-def pivot_summarizer(df_samples, datasets, tags, output_index=None):
+def pivot_category_splitter(records):
+    for r in records:
+        cats = r["category"]
+        for c in (cats if isinstance(cats, tuple) else (cats, )):
+            yield {**r, "category":c}
+
+def pivot_summarizer(df_samples, datasets, tags, output_index=None, accept_class="Accept"):
     df_samples = df_samples.groupby(['category', 'dataset', 'dataset_id', 'folder', 'prediction']).size().reset_index(name="count")
-    df_samples.category = df_samples.category.apply(lambda x: "_".join(sorted(x)))
+    df_samples["id"] = df_samples[["dataset_id", "folder", "prediction"]].apply(lambda x: "-".join(x), axis=1)
+    df_samples["dataset_url"] = df_samples.dataset_id.apply(lambda x: "https://app.criterion.ai/data/" + x)
+
     df_tags = pd.concat(pivot_dataset_tags(datasets, tags), axis=0).set_index("dataset_id", drop=True)
 
     rec = df_samples.join(df_tags, on="dataset_id").to_dict("records")
     rec = [{k: v for k, v in x.items() if not isinstance(v, float) or not np.isnan(v)} for x in rec]
+    rec = list(pivot_category_splitter(rec))
+    add_outlier_classification_summary(rec, accept_class)
 
-    fields = [dict(key=c, label=next(tag_utils.find(tags, "id", c))["name"]) for c in df_tags.columns] +\
-             [dict(key=c, label=c) for c in df_samples.columns]
-
-    fields = {"rowFields": [], "fields":fields, "colFields": []}
+    fields = {
+        "rowFields": [
+            dict(key="category", label="Category"),
+            dict(key="dataset", label="Dataset")
+        ],
+        "fields": [dict(key=c, label=next(tag_utils.find(tags, "id", c))["name"]) for c in df_tags.columns] +\
+             [dict(key=c, label=c) for c in
+              filter(lambda x: x not in ("id", "count", "category", "prediction", "dataset"), df_samples.columns)] +\
+             [
+                 dict(key="sample_quality", label="Sample Quality"),
+                 dict(key="decision", label="Decision")
+             ],
+        "colFields": [
+            dict(key="prediction", label="Prediction"),
+        ]
+    }
 
     return rec, fields
 
+def add_outlier_classification_summary(classification_summary, accept_name):
+    for cs in classification_summary:
+        accepted = cs["prediction"] == accept_name
+        accept_class = accept_name == cs["category"]
+        cs["sample_quality"] = ["reject", "accept"][accept_class]
+        cs["decision"] = ["reject", "accept"][accepted]
+    return classification_summary
 
 def get_classification_predictions(model, data_set, data_gen, class_names, output_index=-1):
     # saving target_mode to be able to restore
