@@ -1,6 +1,22 @@
 from criterionai_tools.web_tools import CriterionWeb
 from pandas import MultiIndex
 
+def find(tree, key, value):
+    items = tree.get("children", []) if isinstance(tree, dict) else tree
+    for item in items:
+        if item[key] == value:
+            yield item
+        else:
+            yield from find(item, key, value)
+
+
+def find_path(tree, key, value, path=()):
+    items = tree.get("children", []) if isinstance(tree, dict) else tree
+    for item in items:
+        if item[key] == value:
+            yield (*path, item)
+        else:
+            yield from find_path(item, key, value, (*path, item))
 
 def get_dataset_tag_records(tag_connection_info, datasets):
     tag_parser = TagParser(tag_connection_info=tag_connection_info)

@@ -2,6 +2,55 @@ from criterion_core.utils import path
 import numpy as np
 import copy
 import pandas as pd
+from criterion_core.utils import tag_utils
+
+
+def _sample_predictor(model, data_generator, output_index=None):
+    for idx in range(len(data_generator)):
+        samples, X = data_generator.get_batch(idx)
+        outputs = model.predict(X)
+
+        class_names = data_generator.classes
+        if output_index is not None:
+            outputs = outputs[:, output_index, None]
+            class_names = [data_generator.classes[output_index]]
+
+        dfs = pd.DataFrame.from_records(list(samples))
+        dfp = pd.DataFrame(outputs, columns=class_names)
+        dff = dfs.apply(lambda x: "/".join(pd.Series(path.get_folders(x["path"], x["bucket"]))), axis=1)
+        df = pd.concat(
+            (dfs,
+             dfp.add_prefix('prob/'),
+             dff.rename('folder'),
+             dfp.idxmax(axis=1).rename("prediction")), axis=1)
+        df.dataset_id = df.dataset_id.astype('category')
+        yield df
+
+def sample_predictions(model, data_generator, output_index=None):
+    return pd.concat(_sample_predictor(model, data_generator), axis=0)
+
+def pivot_dataset_tags(datasets, tags):
+    for ds in datasets:
+        paths = [next(tag_utils.find_path(tags, "id", t["id"])) for t in ds["tags"]]
+        df = pd.DataFrame.from_records([{p[0]["id"]: p[1]["name"]} for p in paths])
+        df["dataset_id"] = pd.Series(ds["id"], index=df.index, dtype="category")
+        yield df
+
+def pivot_summarizer(df_samples, datasets, tags, output_index=None):
+    df_samples = df_samples.groupby(['category', 'dataset', 'dataset_id', 'folder', 'prediction']).size().reset_index(name="count")
+    df_samples.category = df_samples.category.apply(lambda x: "_".join(sorted(x)))
+    df_tags = pd.concat(pivot_dataset_tags(datasets, tags), axis=0).set_index("dataset_id", drop=True)
+
+    rec = df_samples.join(df_tags, on="dataset_id").to_dict("records")
+    rec = [{k: v for k, v in x.items() if not isinstance(v, float) or not np.isnan(v)} for x in rec]
+
+    fields = [dict(key=c, label=next(tag_utils.find(tags, "id", c))["name"]) for c in df_tags.columns] +\
+             [dict(key=c, label=c) for c in df_samples.columns]
+
+    fields = {"rowFields": [], "fields":fields, "colFields": []}
+
+    return rec, fields
+
 
 def get_classification_predictions(model, data_set, data_gen, class_names, output_index=-1):
     # saving target_mode to be able to restore
