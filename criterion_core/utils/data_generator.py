@@ -38,8 +38,6 @@ class DataGenerator(keras.utils.Sequence):
             set(item for sublist in class_space for item in sublist if item != "__UNLABELED__"))
         self.label_space = self.categorical_encoder(self.classes, class_space)
         self.color_mode = color_mode
-        if self.color_mode == "bayer":
-            target_shape = np.ceil(np.array(target_shape)/2)
         self.target_shape = (int(target_shape[0]), int(target_shape[1]), COLOR_MODES[self.color_mode])
         self.augmentation = get_augmentation_pipeline(augmentation, self.target_shape, rois, interpolation=interpolation,
                                                       anti_aliasing=anti_aliasing)
