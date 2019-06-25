@@ -17,3 +17,5 @@ def BayerDemosaic(mode="rgb"):
                   padding='same')
 
 
+def tf_bayer_demosaic(x, mode="rgb"):
+    return tf.nn.conv2d(x, kernels["rgb"][:,:,None,:], strides=[1, 2, 2, 1], padding='SAME')

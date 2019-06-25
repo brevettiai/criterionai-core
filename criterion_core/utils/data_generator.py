@@ -9,30 +9,40 @@ from criterion_core.utils.augmentation import get_augmentation_pipeline
 from . import io_tools
 
 log = logging.getLogger(__name__)
-COLOR_MODE = {1: cv2.IMREAD_GRAYSCALE,
-              3: cv2.IMREAD_COLOR}
+
+COLOR_MODES = {"greyscale": 1,
+               "bayer": 3,
+               "rgb": 3}
+
+COLOR_MODE_CV2_IMREAD = {
+    "greyscale": cv2.IMREAD_GRAYSCALE,
+    "bayer": cv2.IMREAD_GRAYSCALE,
+    "rgb": cv2.IMREAD_GRAYSCALE
+}
 
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, samples, classes=None, rois=[], augmentation=None, target_shape=(224, 224, 1), batch_size=32,
+    def __init__(self, samples, classes=None, rois=[], augmentation=None, target_shape=(224, 224), batch_size=32,
                  shuffle=True, target_mode="classification", max_epoch_samples=np.inf,
-                 interpolation='linear', anti_aliasing=False):
+                 interpolation='linear', anti_aliasing=False, color_mode="rgb"):
 
         self.samples = samples
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.rois = rois
         self.target_mode = target_mode
-        self.augmentation = get_augmentation_pipeline(augmentation, target_shape, rois, interpolation=interpolation,
-                                                      anti_aliasing=anti_aliasing)
-        self.target_shape = target_shape
         self.indices = None
         self.interpolation = interpolation
         class_space = set(s['category'] for s in samples)
         self.classes = classes or sorted(
             set(item for sublist in class_space for item in sublist if item != "__UNLABELED__"))
         self.label_space = self.categorical_encoder(self.classes, class_space)
-        self.color_mode = COLOR_MODE[target_shape[2]]
+        self.color_mode = color_mode
+        if self.color_mode == "bayer":
+            target_shape = np.ceil(np.array(target_shape)/2)
+        self.target_shape = (int(target_shape[0]), int(target_shape[1]), COLOR_MODES[self.color_mode])
+        self.augmentation = get_augmentation_pipeline(augmentation, self.target_shape, rois, interpolation=interpolation,
+                                                      anti_aliasing=anti_aliasing)
         self.max_epoch_samples = max_epoch_samples
         self.on_epoch_end()
 
@@ -68,9 +78,11 @@ class DataGenerator(keras.utils.Sequence):
         # Initialization
         X = np.zeros((len(buffers),) + self.target_shape)
         for ii, buffer in enumerate(buffers):
-            img = cv2.imdecode(np.frombuffer(buffer, np.uint8), flags=self.color_mode)
-            if self.color_mode == cv2.IMREAD_COLOR:
+            img = cv2.imdecode(np.frombuffer(buffer, np.uint8), flags=COLOR_MODE_CV2_IMREAD[self.color_mode])
+            if self.color_mode == "rgb":
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            elif self.color_mode == "bayer":
+                img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2RGB)
 
             img_t = self.augmentation.augment_image(img)
 

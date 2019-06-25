@@ -51,7 +51,7 @@ def pivot_summarizer(df_samples, datasets, tags, output_index=None, accept_class
     df_samples["id"] = df_samples[["dataset_id", "folder", "prediction"]].apply(lambda x: "-".join(x), axis=1)
     df_samples["dataset_url"] = df_samples.dataset_id.apply(lambda x: "https://app.criterion.ai/data/" + x)
 
-    df_tags = pd.concat(pivot_dataset_tags(datasets, tags), axis=0).set_index("dataset_id", drop=True, sort=False)
+    df_tags = pd.concat(pivot_dataset_tags(datasets, tags), axis=0, sort=False).set_index("dataset_id", drop=True)
 
     rec = df_samples.join(df_tags, on="dataset_id").to_dict("records")
     rec = [{k: v for k, v in x.items() if not isinstance(v, float) or not np.isnan(v)} for x in rec]
