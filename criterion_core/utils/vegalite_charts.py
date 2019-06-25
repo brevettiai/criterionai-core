@@ -22,7 +22,7 @@ def make_security_selection(devel_pred_output, classes):
 
     for cl in classes:
         sec_level = '{}_security_level'.format(cl)
-        select_security = alt.selection(type='interval', encodings=['x'])
+        select_security = alt.selection(type='interval', encodings=['x'], empty='none')
         scores_accept = devel_pred_output[devel_pred_output.category.apply(lambda x: cl in x)]["prob_" + cl].values
         scores_reject = devel_pred_output[devel_pred_output.category.apply(lambda x: cl not in x)]["prob_" + cl].values
 
@@ -31,13 +31,14 @@ def make_security_selection(devel_pred_output, classes):
 
         ROC_df = pd.DataFrame({'FRR': FRR, 'TRR': TRR+1e-5*rng, sec_level: rng})
 
-
         ROC_comb_alt = make_selector_chart(df=ROC_df, x_name='TRR', y_name='FRR', selector=select_security)
         FRR_comb_alt = make_selector_chart(df=ROC_df, x_name=sec_level, y_name='FRR', selector=select_security)
         TRR_comb_alt = make_selector_chart(df=ROC_df, x_name=sec_level, y_name='TRR', selector=select_security)
 
-        security_charts.append(alt.concat(ROC_comb_alt, FRR_comb_alt, TRR_comb_alt).resolve_scale(color='independent').to_json())
-    return security_charts
+        security_charts.append(alt.concat(ROC_comb_alt, FRR_comb_alt, TRR_comb_alt).resolve_scale(color='independent')\
+                               .properties(title='{} security level'.format(cl)))
+    return alt.vconcat(*security_charts).configure_title(
+                    fontSize=24, anchor='start', color='green').to_json()
 
 
 def dataset_summary(samples):
