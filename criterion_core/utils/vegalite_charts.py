@@ -3,11 +3,11 @@ import pandas as pd
 import numpy as np
 
 
-def make_selector_chart(df, x_name, y_name, selector, color="red", size=100):
+def make_selector_chart(df, x_name, y_name, selector, color="red", size=10):
     chart_line = alt.Chart(df).mark_line().encode(
         x=x_name,
         y=y_name)
-    chart_sel = alt.Chart(df).mark_circle(color=color, size=size).encode(
+    chart_sel = alt.Chart(df).mark_line(color=color, thickness=size).encode(
         x=x_name,
         y=y_name).add_selection(selector).transform_filter(selector)
     chart_layered = alt.layer(chart_line, chart_sel)
@@ -15,7 +15,6 @@ def make_selector_chart(df, x_name, y_name, selector, color="red", size=100):
 
 
 def make_security_selection(devel_pred_output, classes):
-    print(classes)
     step = 1
     rng = np.arange(0.0, 100+step, step)
 
@@ -23,8 +22,7 @@ def make_security_selection(devel_pred_output, classes):
 
     for cl in classes:
         sec_level = '{}_security_level'.format(cl)
-        slider = alt.binding_range(min=rng.min(), max=rng.max(), step=step)
-        select_security = alt.selection_single(name="set", fields=[sec_level], bind=slider)
+        select_security = alt.selection(type='interval', encodings=['x'])
         scores_accept = devel_pred_output[devel_pred_output.category.apply(lambda x: cl in x)]["prob_" + cl].values
         scores_reject = devel_pred_output[devel_pred_output.category.apply(lambda x: cl not in x)]["prob_" + cl].values
 
