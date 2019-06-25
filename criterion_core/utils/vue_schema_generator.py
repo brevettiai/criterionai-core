@@ -2,20 +2,21 @@ import json
 
 import criterion_core.utils.vue_schema_utils as schema
 from criterion_core.utils.augmentation import augmentation_schema
+from criterion_core.utils.data_generator import COLOR_MODES
 
 
-def data_schema(input_shape=(224, 224, 3), class_mapping={"gode": "A", "chips": ["B", "C"]}):
+def data_schema(input_shape=(224, 224), class_mapping={"gode": "A", "chips": ["B", "C"]}):
     return [
         schema.label("Data"),
         schema.number_input("Network input width", "input_width",
                             default=input_shape[0], required=True, min=96, max=4096),
         schema.number_input("Network input height", "input_height",
                             default=input_shape[1], required=True, min=96, max=4096),
-        schema.number_input("Image channels", "input_channels",
-                            default=input_shape[2], required=True, min=1, max=4),
+        schema.select("Color mode", "color_mode", required=True, default="greyscale",
+                      values=list(COLOR_MODES.keys())),
         schema.text_input("Image rois. E.g. [[[100, 100], [400, 500]], [[500, 100], [800, 500]]]", "rois",
                           required=False, default="[]"),
-        schema.text_input("Output classes, separated by ','", "classes", required=False),
+        schema.text_input("Output classes as list", "classes", required=False),
         schema.text_area("Json class mapping", "class_mapping",
                          default=json.dumps(class_mapping, indent=2, sort_keys=True),
                          required=True,

@@ -4,63 +4,11 @@ from copy import deepcopy
 
 from criterion_core.config import CriterionConfig
 from criterion_core.utils import path
+from criterion_core.utils.vue_schema_generator import get_default_schema
 
 
 class TestCriterionConfig(unittest.TestCase):
-    example_schema = {'fields': [
-        {'label': 'Data', 'type': 'label'},
-        {'min': 96, 'model': 'input_width', 'max': 4096, 'label': 'Network input width',
-         'inputType': 'number', 'type': 'input', 'default': 224, 'required': True},
-        {'min': 96, 'model': 'input_height', 'max': 4096, 'label': 'Network input height',
-         'inputType': 'number', 'type': 'input', 'default': 224, 'required': True},
-        {'min': 1, 'model': 'input_channels', 'max': 4, 'label': 'Image channels',
-         'inputType': 'number', 'type': 'input', 'default': 3, 'required': True},
-        {'label': "Output classes, separated by ','", 'inputType': 'text', 'type': 'input',
-         'model': 'classes', 'required': False},
-        {'hint': 'Max 5000 characters', 'required': True,
-         'default': '{\n "gode": "A",\n "chips": ["B","C"]\n}', 'rows': 4, 'max': 5000,
-         'label': 'Json class mapping', 'type': 'textArea', 'model': 'class_mapping',
-         'placeholder': 'Map classes to folder names'}, {'label': 'Training', 'type': 'label'},
-        {'min': 0, 'model': 'epochs', 'max': 50, 'label': 'Epochs', 'inputType': 'number',
-         'type': 'input', 'default': 10, 'required': True},
-        {'min': 1, 'model': 'batch_size', 'max': 64, 'label': 'Batch Size',
-         'inputType': 'number', 'type': 'input', 'default': 32, 'required': True},
-        {'model': 'loss', 'required': True, 'label': 'Loss function', 'type': 'select',
-         'default': 'weighted_binary_crossentropy',
-         'values': ['weighted_binary_crossentropy', 'binary_crossentropy']},
-        {'hint': 'Max 5000 characters', 'default': '{\n  "chips": 10\n}', 'rows': 4,
-         'max': 5000, 'label': 'Json class weights', 'type': 'textArea',
-         'model': 'class_weights', 'placeholder': 'Weight some classes more than others'},
-        {'label': 'Validation', 'type': 'label'},
-        {'model': 'validation.split_strategy', 'required': True, 'label': 'Splitting strategy',
-         'type': 'select', 'default': 'by_class', 'values': ['by_class']},
-        {'min': 0, 'model': 'validation.split_percentage', 'max': 100,
-         'label': 'Split percentage', 'inputType': 'number', 'type': 'input', 'default': 20,
-         'required': True}, {'label': 'Data Augmentation', 'type': 'label'},
-        {'min': 0, 'model': 'data_augmentation.vertical_translation_range', 'max': 100,
-         'label': 'Vertical translation range in percent', 'inputType': 'number',
-         'type': 'input', 'default': 1, 'required': True},
-        {'min': 0, 'model': 'data_augmentation.horizontal_translation_range', 'max': 100,
-         'label': 'Horizontal translation range in percent', 'inputType': 'number',
-         'type': 'input', 'default': 1, 'required': True},
-        {'min': 0, 'model': 'data_augmentation.scaling_range', 'max': 100,
-         'label': 'Scaling range in percent', 'inputType': 'number', 'type': 'input',
-         'default': 0, 'required': True},
-        {'min': 0, 'model': 'data_augmentation.rotation_angle', 'max': 180,
-         'label': 'Rotation range in degrees', 'inputType': 'number', 'type': 'input',
-         'default': 5, 'required': True},
-        {'step': 0.1, 'min': 0, 'model': 'data_augmentation.shear_range', 'max': 1,
-         'label': 'Shear range', 'inputType': 'number', 'type': 'input', 'default': 0,
-         'required': True},
-        {'default': False, 'label': 'Can images be flipped horizontally?', 'type': 'checkbox',
-         'model': 'data_augmentation.flip_horizontal', 'required': True},
-        {'default': False, 'label': 'Can images be flipped vertically?', 'type': 'checkbox',
-         'model': 'data_augmentation.flip_vertical', 'required': True},
-        {'default': True, 'label': 'Color correction', 'type': 'checkbox',
-         'model': 'data_augmentation.color_correct'}, {'label': 'Export', 'type': 'label'},
-        {'model': 'img_format', 'required': True, 'label': 'Input image format in production',
-         'type': 'select', 'default': 'bmp', 'values': ['bmp', 'jpeg', 'png']}
-    ]}
+    example_schema = get_default_schema()
 
     example_parameters = {'settings': {'loss': 'weighted_binary_crossentropy',
                                        'data_augmentation': {'flip_horizontal': True, 'rotation_angle': 5,
@@ -82,6 +30,12 @@ class TestCriterionConfig(unittest.TestCase):
                               'name': 'NeurIPS vials CnD', 'id': '22df6831-5de9-4545-af17-cdfe2e8b2049'}, {
                               'bucket': 'C:\\data\\novo\\images\\555bdea5-8b57-4352-beab-fc0006232d21.datasets.criterion.ai',
                               'name': 'Data', 'id': '555bdea5-8b57-4352-beab-fc0006232d21'}]}
+
+
+    def test_default_schema_class_mapping_and_classes(self):
+        assert any([x for x in self.example_schema["fields"] if x.get("model", "") == "class_mapping"])
+        assert any([x for x in self.example_schema["fields"] if x.get("model", "") == "classes"])
+
 
     def test_load_schema(self):
         config = CriterionConfig(job_dir="", schema=self.example_schema, **self.example_parameters)

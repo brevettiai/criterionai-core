@@ -10,10 +10,10 @@ from . import io_tools
 import cv2
 
 
-def create_atlas(samples, thumbnail_size, rois):
+def create_atlas(samples, thumbnail_size, rois, color_mode):
     facet_gen = data_generator.DataGenerator(samples, augmentation=None, rois=rois,
                                              target_shape=thumbnail_size, shuffle=False,
-                                             interpolation='linear', anti_aliasing=0.5)
+                                             interpolation='linear', anti_aliasing=0.5, color_mode=color_mode)
 
     images = [None] * len(facet_gen)
     for ii in range(len(facet_gen)):
@@ -48,4 +48,4 @@ if __name__ == '__main__':
 
     samples = list(sampletools.flatten_dataset(dssamples))
 
-    build_facets(samples, output_path, thumbnail_size=(64, 64, 1))
+    build_facets(samples, output_path, thumbnail_size=(64, 64), color_mode="greyscale")

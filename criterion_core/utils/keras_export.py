@@ -10,15 +10,17 @@ from tensorflow.keras.models import load_model
 from .path import movedir
 import shutil
 import tarfile
+from criterion_core.utils import bayer_demosaic
 
 
-def define_image_input_receiver(input_tensor, img_format, input_shape):
+def define_image_input_receiver(input_tensor, img_format, input_shape, color_mode="rgb"):
     """
     Image loading pipeline
     Loads and scales image to range [0,1) t
     :param input_tensor: Name of input tensor
     :param img_format:
     :param input_shape:
+    :param color_mode: color mode (set to bayer if the input should be bayer filtered)
     :return:
     """
     def serving_input_receiver_fn():
@@ -31,6 +33,9 @@ def define_image_input_receiver(input_tensor, img_format, input_shape):
             if img_format=='png':
                 image = tf.image.decode_png(image_str_tensor, channels=input_shape[-1])
             image = tf.expand_dims(image, 0)
+            if color_mode == "bayer":
+                image = tf.nn.conv2d(image, bayer_demosaic.kernels["rgb"], strides=[1, 2, 2, 1], padding='SAME')
+
             image = tf.image.resize_bilinear(image, input_shape[:2], align_corners=False)
             image = tf.squeeze(image, axis=[0])
             image = tf.cast(image, dtype=tf.uint8)

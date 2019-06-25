@@ -1,9 +1,13 @@
-import os
+# Utility script for generation of a model.config protobuf
+
 import argparse
 import logging
+import os
+
 from tensorflow_serving.config import model_server_config_pb2
 
 log = logging.getLogger(__name__)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -23,12 +27,15 @@ if __name__ == "__main__":
         model_config = model_server_config_pb2.ModelConfig()
         model_config.model_platform = "tensorflow"
         model_config.name = folder
-        model_config.base_path = os.path.join(os.path.abspath(base) + folder)
+        model_config.base_path = os.path.join(os.path.abspath(base), folder)
+
+        #model_config.model_version_policy.specific.versions.extend([1])
+        model_config.model_version_policy.all.SetInParent()
 
         ## Logging config not working in tf serving version 1.13
-        #model_config.logging_config.sampling_config.sampling_rate = 0.1
-        #model_config.logging_config.log_collector_config.type = "file"
-        #model_config.logging_config.log_collector_config.filename_prefix = "log_"
+        # model_config.logging_config.sampling_config.sampling_rate = 0.1
+        # model_config.logging_config.log_collector_config.type = "file"
+        # model_config.logging_config.log_collector_config.filename_prefix = "log_"
 
         model_server_config.model_config_list.config.extend([model_config])
 
