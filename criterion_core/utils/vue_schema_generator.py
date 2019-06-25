@@ -33,6 +33,7 @@ def training_schema(epochs=10, batch_size=32, loss_function="weighted_binary_cro
                             default=epochs, required=True, min=1, max=50),
         schema.number_input("Batch size", "batch_size",
                             default=batch_size, required=True, min=1, max=64),
+        schema.number_input("Max samples per epoch", "max_epoch_samples", required=False, default=4096, min=1, max=1000000),
         schema.select("Loss function", "loss", default=loss_function, required=True,
                       values=[
                           "weighted_binary_crossentropy",
