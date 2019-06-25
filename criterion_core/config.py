@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from json import JSONEncoder
 import tempfile
 from .utils import io_tools
+from criterion_core.utils.vue_schema_utils import parse_settings_args
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class CriterionConfig:
     """
 
     def __init__(self, job_dir, id, name, datasets, settings, api_key, host_name, charts_url, complete_url, remote_url,
-                 schema, check_required_settings=True, root_tags=None, **kwargs):
+                 schema, check_required_settings=True, root_tags=None, settings_overload=None, **kwargs):
         """
         :param schema: JSON schema used for model definition
         :param parameters: setup parameters overwriting default schema values
@@ -27,6 +28,7 @@ class CriterionConfig:
         self.id = id
         self.name = name
         self.datasets = datasets
+        dict_merger(settings_overload, settings)
         self.settings = merge_settings(schema, settings, check_required_settings)
         self.tags = root_tags
 
@@ -46,6 +48,7 @@ class CriterionConfig:
         Get CriterionConfig from ml engine and local schema
         :param job_dir: google storage bucket of job
         :param schema_path: path for model schema
+        :param args: extra arguments to be parsed with argparse to settings
         :return: CriterionConfig object
         """
 
@@ -57,7 +60,9 @@ class CriterionConfig:
         with open(schema_path, 'r') as fp:
             schema = json.load(fp)
 
-        config = CriterionConfig(job_dir=job_dir, schema=schema, **parameters)
+
+        config = CriterionConfig(job_dir=job_dir, schema=schema,
+                                 settings_overload=parse_settings_args(schema), **parameters)
         log.info(config)
         return config
 
