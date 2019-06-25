@@ -26,8 +26,8 @@ def make_security_selection(devel_pred_output, classes):
         scores_accept = devel_pred_output[devel_pred_output.category.apply(lambda x: cl in x)]["prob_" + cl].values
         scores_reject = devel_pred_output[devel_pred_output.category.apply(lambda x: cl not in x)]["prob_" + cl].values
 
-        FRR = [(scores_accept < thr/100).sum()/len(scores_accept ) for thr in rng]
-        TRR = [(scores_reject < thr/100).sum()/len(scores_reject) for thr in rng]
+        FRR = [0.0 if len(scores_accept)==0 else (scores_accept < thr/100).sum()/len(scores_accept ) for thr in rng]
+        TRR = [0.0 if len(scores_reject)==0 else (scores_reject < thr/100).sum()/len(scores_reject) for thr in rng]
 
         ROC_df = pd.DataFrame({'FRR': FRR, 'TRR': TRR+1e-5*rng, sec_level: rng})
 
@@ -36,9 +36,9 @@ def make_security_selection(devel_pred_output, classes):
         TRR_comb_alt = make_selector_chart(df=ROC_df, x_name=sec_level, y_name='TRR', selector=select_security)
 
         security_charts.append(alt.concat(ROC_comb_alt, FRR_comb_alt, TRR_comb_alt).resolve_scale(color='independent')\
-                               .properties(title='{} security level'.format(cl)))
-    return alt.vconcat(*security_charts).configure_title(
-                    fontSize=24, anchor='start', color='green').to_json()
+                               .properties(title='{} security level'.format(cl))\
+                               .configure_title(fontSize=24, anchor='start', color='green').to_json())
+    return security_charts
 
 
 def dataset_summary(samples):
