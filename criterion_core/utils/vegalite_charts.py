@@ -15,16 +15,18 @@ def make_selector_chart(df, x_name, y_name, selector, color="red", size=100):
 
 
 def make_security_selection(devel_pred_output, classes):
+    print(classes)
     step = 1
     rng = np.arange(0.0, 100+step, step)
 
     security_charts = []
+
     for cl in classes:
         sec_level = '{}_security_level'.format(cl)
         slider = alt.binding_range(min=rng.min(), max=rng.max(), step=step)
         select_security = alt.selection_single(name="set", fields=[sec_level], bind=slider)
-        scores_accept = np.array([sc["prob_" + cl] for sc in devel_pred_output if cl in sc["category"]])
-        scores_reject = np.array([sc["prob_" + cl] for sc in devel_pred_output if not cl in sc["category"]])
+        scores_accept = devel_pred_output[devel_pred_output.category.apply(lambda x: cl in x)]["prob_" + cl].values
+        scores_reject = devel_pred_output[devel_pred_output.category.apply(lambda x: cl not in x)]["prob_" + cl].values
 
         FRR = [(scores_accept < thr/100).sum()/len(scores_accept ) for thr in rng]
         TRR = [(scores_reject < thr/100).sum()/len(scores_reject) for thr in rng]
