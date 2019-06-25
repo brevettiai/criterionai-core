@@ -1,11 +1,14 @@
-from criterion_core.utils import path
-import numpy as np
 import copy
-import pandas as pd
-from criterion_core.utils import tag_utils
 import logging
 
+import numpy as np
+import pandas as pd
+
+from criterion_core.utils import path
+from criterion_core.utils import tag_utils
+
 log = logging.getLogger(__name__)
+
 
 def _sample_predictor(model, data_generator, output_index=None):
     for idx in range(len(data_generator)):
@@ -23,31 +26,35 @@ def _sample_predictor(model, data_generator, output_index=None):
         dff.columns = ["folder"]
         df = pd.concat(
             (dfs,
-             dfp.add_prefix('prob/'),
+             dfp.add_prefix('prob_'),
              dff,
              dfp.idxmax(axis=1).rename("prediction")), axis=1)
         df.dataset_id = df.dataset_id.astype('category')
         yield df
 
-def sample_predictions(model, data_generator, output_index=None):
-    return pd.concat(_sample_predictor(model, data_generator), axis=0)
+
+def sample_predictions(model, data_generator, *args, **kwargs):
+    return pd.concat(_sample_predictor(model, data_generator, *args, **kwargs), axis=0)
+
 
 def pivot_dataset_tags(datasets, tags):
     for ds in datasets:
         paths = [next(tag_utils.find_path(tags, "id", t["id"])) for t in ds["tags"]]
-        df = pd.DataFrame.from_records([{p[0]["id"]: p[1]["name"]} for p in paths])
+        df = pd.DataFrame.from_records([{"tag_" + p[0]["id"]: p[1]["name"]} for p in paths])
         df["dataset_id"] = pd.Series(ds["id"], index=df.index, dtype="category")
         yield df
+
 
 def pivot_category_splitter(records):
     for r in records:
         cats = r["category"]
-        for c in (cats if isinstance(cats, tuple) else (cats, )):
-            yield {**r, "category":c}
+        for c in (cats if isinstance(cats, tuple) else (cats,)):
+            yield {**r, "category": c}
 
-def pivot_summarizer(df_samples, datasets, tags, output_index=None, accept_class="Accept"):
-    log.info(list(df_samples.columns))
-    df_samples = df_samples.groupby(['category', 'dataset', 'dataset_id', 'folder', 'prediction']).size().reset_index(name="count")
+
+def pivot_summarizer(df_samples, datasets, tags, accept_class="Accept"):
+    df_samples = df_samples.groupby(['category', 'dataset', 'dataset_id', 'folder', 'prediction']).size().reset_index(
+        name="count")
     df_samples["id"] = df_samples[["dataset_id", "folder", "prediction"]].apply(lambda x: "-".join(x), axis=1)
     df_samples["dataset_url"] = df_samples.dataset_id.apply(lambda x: "https://app.criterion.ai/data/" + x)
 
@@ -63,19 +70,22 @@ def pivot_summarizer(df_samples, datasets, tags, output_index=None, accept_class
             dict(key="category", label="Category"),
             dict(key="dataset", label="Dataset")
         ],
-        "fields": [dict(key=c, label=next(tag_utils.find(tags, "id", c))["name"]) for c in df_tags.columns] +\
-             [dict(key=c, label=c) for c in
-              filter(lambda x: x not in ("id", "count", "category", "prediction", "dataset"), df_samples.columns)] +\
-             [
-                 dict(key="sample_quality", label="Sample Quality"),
-                 dict(key="decision", label="Decision")
-             ],
+        "fields": [dict(key=c, label=next(tag_utils.find(tags, "id", c.split("_")[-1]))["name"]) for c in
+                   df_tags.columns] + \
+                  [dict(key=c, label=c) for c in
+                   filter(lambda x: x not in ("id", "count", "category", "prediction", "dataset"),
+                          df_samples.columns)] + \
+                  [
+                      dict(key="sample_quality", label="Sample Quality"),
+                      dict(key="decision", label="Decision")
+                  ],
         "colFields": [
             dict(key="prediction", label="Prediction"),
         ]
     }
 
     return rec, fields
+
 
 def add_outlier_classification_summary(classification_summary, accept_name):
     for cs in classification_summary:
@@ -84,6 +94,7 @@ def add_outlier_classification_summary(classification_summary, accept_name):
         cs["sample_quality"] = ["reject", "accept"][accept_class]
         cs["decision"] = ["reject", "accept"][accepted]
     return classification_summary
+
 
 def get_classification_predictions(model, data_set, data_gen, class_names, output_index=-1):
     # saving target_mode to be able to restore
@@ -96,8 +107,10 @@ def get_classification_predictions(model, data_set, data_gen, class_names, outpu
 
         predictions_class = outputs if output_index < 0 else outputs[output_index]
         prediction_output.append([dict(**s, **{"prob_{}".format(cn): float(pp) for cn, pp in zip(data_gen.classes, p)},
-                                       **{'folder_{}'.format(ii): name for ii, name in enumerate(path.get_folders(s['path'], s['bucket']))},
-                                      prediction=class_names[np.argmax(p)]) for s, p in zip(samples, predictions_class)])
+                                       **{'folder_{}'.format(ii): name for ii, name in
+                                          enumerate(path.get_folders(s['path'], s['bucket']))},
+                                       prediction=class_names[np.argmax(p)]) for s, p in
+                                  zip(samples, predictions_class)])
 
     prediction_output = np.concatenate(prediction_output).tolist()
     return prediction_output
@@ -123,6 +136,7 @@ def get_classification_summary(class_names, prediction_output, class_weights, cl
             dd.update({"class": category, "unique_id": kk})
             classification_summary.append(dd)
     return classification_summary
+
 
 def tagged_pivot_classification_summary(classification_summary, ds_tag_records):
     # adding tags
