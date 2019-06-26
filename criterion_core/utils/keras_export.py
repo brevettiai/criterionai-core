@@ -26,6 +26,8 @@ def define_image_input_receiver(input_tensor, img_format, input_shape, color_mod
     def serving_input_receiver_fn():
         def prepare_image(image_str_tensor):
             print("Input shape:", input_shape, input_shape[-1])
+            if color_mode == "bayer":
+                input_shape[-1] = 1
             if img_format=='bmp':
                 image = tf.image.decode_bmp(image_str_tensor, channels=input_shape[-1])
             if img_format=='jpeg' or img_format=='jpg':
@@ -34,7 +36,7 @@ def define_image_input_receiver(input_tensor, img_format, input_shape, color_mod
                 image = tf.image.decode_png(image_str_tensor, channels=input_shape[-1])
             image = tf.expand_dims(image, 0)
             if color_mode == "bayer":
-                image = tf.nn.conv2d(image, bayer_demosaic.kernels["rgb"], strides=[1, 2, 2, 1], padding='SAME')
+                image = bayer_demosaic.tf_bayer_demosaic(image, "rgb")
 
             image = tf.image.resize_bilinear(image, input_shape[:2], align_corners=False)
             image = tf.squeeze(image, axis=[0])
