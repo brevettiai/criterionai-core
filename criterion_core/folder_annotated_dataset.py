@@ -25,7 +25,7 @@ def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_
     for root, _, files in io_tools.walk(dataset["bucket"]):
         folders = path.get_folders(path.join(root, "dummy.ext"), dataset["bucket"])
         category = (folders if len(folders) else [None])[-1] if category_depth == 1 else "/".join(folders[-category_depth:])
-        category = category.lower() if isinstance(category, str) else category
+        #category = category.lower() if isinstance(category, str) else category
         category = category_map.get(category, category)
 
         if force_categories and category not in list(category_map.values()):
