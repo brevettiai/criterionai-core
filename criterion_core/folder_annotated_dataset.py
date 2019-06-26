@@ -1,5 +1,6 @@
 from .utils import io_tools
 from .utils import path
+import urllib.parse
 import mimetypes
 import os
 import logging
@@ -24,7 +25,9 @@ def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_
     for root, _, files in io_tools.walk(dataset["bucket"]):
         folders = path.get_folders(path.join(root, "dummy.ext"), dataset["bucket"])
         category = (folders if len(folders) else [None])[-1] if category_depth == 1 else "/".join(folders[-category_depth:])
+        category = category.lower() if isinstance(category, str) else category
         category = category_map.get(category, category)
+
         if force_categories and category not in list(category_map.values()):
             continue
 
@@ -36,7 +39,8 @@ def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_
                 sample["dataset"] = dataset['name']
                 sample["bucket"] = dataset['bucket']
                 sample["dataset_id"] = dataset['id']
-
+                params = urllib.parse.urlencode({"path": path.join(root, file).replace("gs://",'')}, safe='')
+                sample["url"] = "https://app.criterion.ai/download?{params}".format(params=params)
                 samples.setdefault(category if isinstance(category, str) else "/".join(category), []).append(sample)
     return samples
 
