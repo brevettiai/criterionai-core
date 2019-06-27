@@ -28,6 +28,7 @@ def build_facets(samples, output_path, **atlas_param):
     io_tools.write_file(path.join(output_path, 'facets.json'), json.dumps(list(samples)))
 
     atlas = create_atlas(samples, **atlas_param)
+    atlas = cv2.cvtColor(atlas, cv2.COLOR_BGR2RGB)
     jpeg_created, buffer = cv2.imencode(".jpeg", atlas)
     assert jpeg_created
     io_tools.write_file(path.join(output_path, 'spriteatlas.jpeg'), bytes(buffer))
