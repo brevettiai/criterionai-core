@@ -75,27 +75,32 @@ class DataGenerator(keras.utils.Sequence):
         buffers = io_tools.download_batch(samples_batch)
         # Initialization
         X = np.zeros((len(buffers),) + self.target_shape)
+        Xmask = np.zeros(len(buffers), dtype=np.bool)
         for ii, buffer in enumerate(buffers):
-            img = cv2.imdecode(np.frombuffer(buffer, np.uint8), flags=COLOR_MODE_CV2_IMREAD[self.color_mode])
-            if self.color_mode == "rgb":
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            elif self.color_mode == "bayer":
-                img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2RGB)
+            try:
+                img = cv2.imdecode(np.frombuffer(buffer, np.uint8), flags=COLOR_MODE_CV2_IMREAD[self.color_mode])
+                if self.color_mode == "rgb":
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                elif self.color_mode == "bayer":
+                    img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2RGB)
 
-            img_t = self.augmentation.augment_image(img)
+                img_t = self.augmentation.augment_image(img)
 
-            if np.ndim(img_t) == 2:
-                img_t = img_t[..., None]
+                if np.ndim(img_t) == 2:
+                    img_t = img_t[..., None]
 
-            X[ii] = img_t
+                X[ii] = img_t
+                Xmask[ii] = True
+            except:
+                log.warning("Error loading %r" % samples_batch[ii])
 
-        return X
+        return X, Xmask
 
     def get_batch(self, index):
         batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
         samples = [self.samples[k] for k in batch_indices]
-        X = self.__data_generation(samples)
-        return samples, X
+        X, Xmask = self.__data_generation(samples)
+        return np.array(samples)[Xmask], X[Xmask]
 
     def __getitem__(self, index):
         'Generate one batch of data'
