@@ -14,3 +14,4 @@ def find_path(tree, key, value, path=()):
             yield (*path, item)
         else:
             yield from find_path(item, key, value, (*path, item))
+

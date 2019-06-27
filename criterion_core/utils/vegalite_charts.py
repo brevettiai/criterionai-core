@@ -1,5 +1,54 @@
 import altair as alt
 import pandas as pd
+import numpy as np
+
+
+def make_selector_chart(df, x_name, y_name, chart_text, selector, color="red", size=10):
+    chart_line = alt.Chart(df).mark_line().encode(
+        x=x_name,
+        y=y_name)
+    domain = ['security_level']
+    range_ = [color]
+
+    chart_text = alt.Chart(df).mark_text(align='left',baseline='middle', dx=7, fontSize=20).encode(
+        x=x_name,
+        y=y_name,
+        text=chart_text,
+        color=alt.Color('security_threshold', scale=alt.Scale(domain=domain, range=range_),
+                        legend=alt.Legend(title="Security threshold"))).transform_filter(selector)
+    chart_sel = alt.Chart(df).mark_line(color=color, thickness=size).encode(
+        x=x_name,
+        y=y_name).add_selection(selector).transform_filter(selector)
+    chart_layered = alt.layer(chart_line, chart_text, chart_sel)
+    return chart_layered
+
+
+def make_security_selection(devel_pred_output, classes):
+    step = 1
+    rng = np.arange(0.0, 100+step, step)
+
+    security_charts = []
+
+    for cl in classes:
+        sec_level = '{}_security_level'.format(cl)
+        select_security = alt.selection(type='interval', encodings=['x'])
+        scores_accept = devel_pred_output[devel_pred_output.category.apply(lambda x: cl in x)]["prob_" + cl].values
+        scores_reject = devel_pred_output[devel_pred_output.category.apply(lambda x: cl not in x)]["prob_" + cl].values
+
+        FRR = [0.0 if len(scores_accept)==0 else (scores_accept < thr/100).sum()/len(scores_accept ) for thr in rng]
+        TRR = [0.0 if len(scores_reject)==0 else (scores_reject < thr/100).sum()/len(scores_reject) for thr in rng]
+
+        ROC_df = pd.DataFrame({'FRR': FRR, 'TRR': TRR+1e-5*rng, sec_level: rng,
+                               'security_threshold': ['security_level']*len(rng)})
+
+        ROC_comb_alt = make_selector_chart(df=ROC_df, x_name='TRR', y_name='FRR', chart_text=sec_level,
+                                           selector=select_security)\
+            .properties(title=sec_level)\
+            .configure_title(fontSize=24, anchor='start', color='green').to_json()
+
+        security_charts.append(ROC_comb_alt)
+    return security_charts
+
 
 def dataset_summary(samples):
     data = pd.DataFrame(list(samples))
