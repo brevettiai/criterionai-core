@@ -53,7 +53,7 @@ class DataGenerator(keras.utils.Sequence):
                 try:
                     space[v] = np.vstack([output[classes.index(x)] for x in set(v)]).sum(0)
                 except ValueError as ex:
-                    log.exception("Data for generator contains labels not in accepted classes")
+                    log.warning("Data for generator contains labels not in accepted classes")
                     space[v] = np.full(len(classes), np.nan)
             else:
                 space[v] = np.zeros(len(classes))

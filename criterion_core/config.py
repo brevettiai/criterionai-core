@@ -18,8 +18,8 @@ class CriterionConfig:
     Interface for reading configurations from criterion.ai
     """
 
-    def __init__(self, job_dir, id, name, datasets, settings, api_key, host_name, charts_url, complete_url, remote_url,
-                 schema, check_required_settings=True, root_tags=None, settings_overload=None, **kwargs):
+    def __init__(self, job_dir, id, name, datasets, api_key, host_name, charts_url, complete_url, remote_url, schema,
+                 settings=None, check_required_settings=True, root_tags=None, settings_overload=None, **kwargs):
         """
         :param schema: JSON schema used for model definition
         :param parameters: setup parameters overwriting default schema values
@@ -28,6 +28,7 @@ class CriterionConfig:
         self.id = id
         self.name = name
         self.datasets = datasets
+        settings = {} if settings is None else settings
         dict_merger(settings_overload, settings)
         self.settings = merge_settings(schema, settings, check_required_settings)
         self.tags = root_tags
@@ -43,7 +44,7 @@ class CriterionConfig:
         self.__dict__.update(kwargs)
 
     @staticmethod
-    def from_mlengine(job_dir, schema_path):
+    def from_mlengine(job_dir, schema_path, info_file="info.json", settings_overload=None, **kwargs):
         """
         Get CriterionConfig from ml engine and local schema
         :param job_dir: google storage bucket of job
@@ -52,7 +53,7 @@ class CriterionConfig:
         :return: CriterionConfig object
         """
 
-        parameter_path = path.join(job_dir, "info.json")
+        parameter_path = path.join(job_dir, info_file)
         log.info("Config args found at: '%s'" % parameter_path)
         parameters = json.loads(str(io_tools.read_file(parameter_path), "utf-8"))
         log.info(parameters)
@@ -60,9 +61,11 @@ class CriterionConfig:
         with open(schema_path, 'r') as fp:
             schema = json.load(fp)
 
+        settings_overload = {} if settings_overload is None else settings_overload
+        dict_merger(parse_settings_args(schema), settings_overload)
 
         config = CriterionConfig(job_dir=job_dir, schema=schema,
-                                 settings_overload=parse_settings_args(schema), **parameters)
+                                 settings_overload=settings_overload, **kwargs, **parameters)
         log.info(config)
         return config
 
@@ -76,6 +79,11 @@ class CriterionConfig:
     def artifact_path(self, *paths):
         io_tools.make_dirs(path.join(self.job_dir, "artifacts", *paths[:-1]))
         return path.join(self.job_dir, "artifacts", *paths)
+
+    def upload_artifact(self, artifact_name, payload):
+        artifact_path = self.artifact_path(artifact_name)
+        log.info('Uploading {} to {}'.format(artifact_name, artifact_path))
+        io_tools.write_file(artifact_path, payload)
 
     def upload_pivot_data(self, summary, tag_fields, summary_path=None, fields_path=None):
         if summary_path is None:
@@ -103,7 +111,7 @@ class CriterionConfig:
             log.warning("No Response on complete job", exc_info=e)
         return r
 
-    def complete_job(self, tmp_package_path, package_path="artifacts/saved_model.tar.gz"):
+    def complete_job(self, tmp_package_path=None, package_path="saved_model.tar.gz", output_args=''):
         """
         Complete job by uploading package to gcs and notifying api
         :param tmp_package_path: Path to tar archive with python package
@@ -111,12 +119,12 @@ class CriterionConfig:
         :return:
         """
 
-        gcs_model_path = path.join(self.job_dir, package_path)
-        log.info("Saving saved_model to {}".format(gcs_model_path))
-        with open(tmp_package_path, 'rb') as f_package:
-            io_tools.write_file(gcs_model_path, f_package.read())
-
-        complete_url = self.host_name + self.api_endpoints['complete'] + package_path
+        complete_url = self.host_name + self.api_endpoints['complete']
+        if tmp_package_path is not None:
+            with open(tmp_package_path, 'rb') as f_package:
+                self.upload_artifact("saved_model.tar.gz", f_package.read())
+            complete_url += package_path
+        complete_url += output_args
         try:
             r = requests.post(complete_url)
             log.info('Job completed')
