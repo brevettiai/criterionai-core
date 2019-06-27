@@ -5,6 +5,7 @@ import json
 import logging
 import time
 from base64 import b64encode
+from tkinter import filedialog
 
 import requests
 
@@ -17,8 +18,8 @@ def parse_args():
     parser.add_argument('--port', help='Tensorflow serving port', default=8501)
     parser.add_argument('--model', help='model name', required=True)
     parser.add_argument('--version', help='model version', required=False)
-    parser.add_argument('--image', help='path to image', required=True)
-    parser.add_argument('--repeat', help='path to image', type=int, default=1)
+    parser.add_argument('--image', help='path to image', required=False)
+    parser.add_argument('--repeat', help='repeat prediction n times', type=int, default=1)
     parser.add_argument('--token', help='Bearer token', default='')
 
     args, unparsed = parser.parse_known_args()
@@ -36,6 +37,9 @@ if __name__ == "__main__":
     n_left = args.repeat
     image = args.image
 
+    if image is None:
+        image = filedialog.askopenfilename(initialdir="/", title='Please select an image')
+
     headers = {
         "Content-Type": "application/json"
     }
@@ -48,7 +52,7 @@ if __name__ == "__main__":
         ts = []
         while n_left != 0:
             tstart = time.time()
-            response = requests.get(url, json=payload, headers=headers)
+            response = requests.post(url, json=payload, headers=headers)
             tend = time.time()
             log.info(json.dumps(response.json(), indent=2))
             log.info("Prediction time: %1.1fms" % (1000 * (tend - tstart)))
