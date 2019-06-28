@@ -24,15 +24,17 @@ def create_atlas(samples, thumbnail_size, rois, color_mode):
     return atlas
 
 
-def build_facets(samples, output_path, **atlas_param):
-    io_tools.write_file(path.join(output_path, 'facets.json'), json.dumps(list(samples)))
+def build_facets(samples, output_path, facet_key='', **atlas_param):
+    facet_dive = 'facets{}.json'.format(facet_key)
+    facet_sprite = 'spriteatlas{}.jpeg'.format(facet_key)
 
+    io_tools.write_file(path.join(output_path, facet_dive), json.dumps(list(samples)))
     atlas = create_atlas(samples, **atlas_param)
     atlas = cv2.cvtColor(atlas, cv2.COLOR_BGR2RGB)
     jpeg_created, buffer = cv2.imencode(".jpeg", atlas)
     assert jpeg_created
-    io_tools.write_file(path.join(output_path, 'spriteatlas.jpeg'), bytes(buffer))
-
+    io_tools.write_file(path.join(output_path, facet_sprite), bytes(buffer))
+    return facet_dive, facet_sprite
 
 if __name__ == '__main__':
     from criterion_core import load_image_datasets
