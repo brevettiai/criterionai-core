@@ -14,6 +14,7 @@ def _sample_predictor(model, data_generator, output_index=None):
     for idx in range(len(data_generator)):
         samples, X = data_generator.get_batch(idx)
         outputs = model.predict(X)
+        outputs = outputs if len(model.outputs) == 1 else outputs[0]
 
         class_names = data_generator.classes
         if output_index is not None:
