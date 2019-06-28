@@ -18,4 +18,4 @@ def BayerDemosaic(mode="rgb"):
 
 
 def tf_bayer_demosaic(x, mode="rgb"):
-    return tf.nn.conv2d(x, kernels["rgb"][:,:,None,:], strides=[1, 2, 2, 1], padding='SAME')
+    return tf.nn.conv2d(x, kernels["rgb"][:,:,None,:], strides=[1, 2, 2, 1], padding='SAME', name="bayer_demosaic")

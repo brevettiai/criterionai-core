@@ -17,7 +17,7 @@ COLOR_MODES = {"greyscale": 1,
 COLOR_MODE_CV2_IMREAD = {
     "greyscale": cv2.IMREAD_GRAYSCALE,
     "bayer": cv2.IMREAD_GRAYSCALE,
-    "rgb": cv2.IMREAD_GRAYSCALE
+    "rgb": cv2.IMREAD_COLOR
 }
 
 
@@ -82,7 +82,7 @@ class DataGenerator(keras.utils.Sequence):
                 if self.color_mode == "rgb":
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 elif self.color_mode == "bayer":
-                    img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2RGB)
+                    img = cv2.cvtColor(img, cv2.COLOR_BAYER_RG2RGB)
 
                 img_t = self.augmentation.augment_image(img)
 
