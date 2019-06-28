@@ -102,7 +102,7 @@ def transform(im, A, target_shape, interpolation='linear', anti_aliasing=None):
 def apply_transforms(images, aug, rois, target_shape, *args, **kwargs):
     input_shape = images[0].shape
     t_forms, target_shapes = get_tforms(rois, target_shape, input_shape)
-    img_t = [np.concatenate([transform(im, aug.dot(t_form), ts, *args, **kwargs) for t_form, ts in zip(t_forms, target_shapes)], axis=0)/255.0 for im in images]
+    img_t = [np.concatenate([transform(im, aug.dot(t_form), ts, *args, **kwargs) for t_form, ts in zip(t_forms, target_shapes)], axis=0) for im in images]
     for jj in range(len(img_t)):
         if img_t[jj].ndim == 2:
             img_t[jj] = np.expand_dims(img_t[jj], axis=-1)
