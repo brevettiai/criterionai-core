@@ -18,7 +18,7 @@ class CriterionConfig:
     Interface for reading configurations from criterion.ai
     """
 
-    def __init__(self, job_dir, id, name, datasets, api_key, host_name, charts_url, complete_url, remote_url, schema,
+    def __init__(self, job_dir, id, name, datasets, api_key, host_name, charts_url, complete_url, schema, remote_url=None,
                  settings=None, check_required_settings=True, root_tags=None, settings_overload=None, **kwargs):
         """
         :param schema: JSON schema used for model definition
@@ -122,7 +122,7 @@ class CriterionConfig:
         complete_url = self.host_name + self.api_endpoints['complete']
         if tmp_package_path is not None:
             with open(tmp_package_path, 'rb') as f_package:
-                self.upload_artifact("saved_model.tar.gz", f_package.read())
+                self.upload_artifact(package_path, f_package.read())
             complete_url += package_path
         complete_url += output_args
         try:
