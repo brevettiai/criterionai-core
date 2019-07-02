@@ -80,7 +80,7 @@ def evaluate_model(config, finetuned_model, test_gen, rois, classes, max_facet_s
     facet_gen = data_generator.DataGenerator(test_pred_output[:max_facet_size].to_dict("records"), augmentation=None,
                                              rois=rois, target_shape=(64, 64), shuffle=False,
                                              interpolation='linear', anti_aliasing=0.5,
-                                             color_mode=config.settings.color_mode)
+                                             color_mode=config.settings.color_mode, rescale=255.0, offset=0.0)
     facets_dive, facets_img = build_facets(facet_gen, config.get_facets_folder(), facet_key=facet_key)
     facet_info = '&' + urllib.parse.urlencode({'facetsFile': facets_dive, 'spriteFile': facets_img})
     return facet_info
