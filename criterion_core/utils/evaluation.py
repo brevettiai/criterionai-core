@@ -41,7 +41,7 @@ def sample_predictions(model, data_generator, *args, **kwargs):
 def pivot_dataset_tags(datasets, tags):
     for ds in datasets:
         paths = [next(tag_utils.find_path(tags, "id", t["id"])) for t in ds["tags"]]
-        df = pd.DataFrame.from_records([{"tag_" + p[0]["id"]: p[1]["name"]} for p in paths])
+        df = pd.DataFrame.from_records([{"tag_" + p[0]["id"]: p[1]["name"]for p in paths}])
         df["dataset_id"] = pd.Series(ds["id"], index=df.index, dtype="category")
         yield df
 
