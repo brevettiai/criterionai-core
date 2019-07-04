@@ -84,9 +84,6 @@ class DataGenerator(keras.utils.Sequence):
                 elif self.color_mode == "bayer":
                     img = cv2.cvtColor(img, cv2.COLOR_BAYER_RG2RGB)
 
-                # Rescale image to [-1, 1] as imagenet does
-                img = (img/127.5) - 1.
-
                 img_t = self.augmentation.augment_image(img)
 
                 if np.ndim(img_t) == 2:
