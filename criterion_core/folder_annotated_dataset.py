@@ -28,7 +28,7 @@ def load_dataset(dataset, category_depth=1, filter=None, samples=None, category_
         #category = category.lower() if isinstance(category, str) else category
         category = category_map.get(category, category)
 
-        if force_categories and category not in list(category_map.values()):
+        if (force_categories and category not in list(category_map.values())) or category is None:
             continue
 
         for file in files:

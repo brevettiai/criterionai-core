@@ -51,6 +51,7 @@ def define_image_input_receiver(input_tensor, img_format, input_shape, color_mod
 
         log.info("Resize input image to: {}".format(input_shape[:2]))
         images = tf.image.resize_bilinear(images, input_shape[:2], align_corners=False)
+        images = images * 2.0 - 1.0
 
         return tf.estimator.export.ServingInputReceiver(
             {input_tensor: images},

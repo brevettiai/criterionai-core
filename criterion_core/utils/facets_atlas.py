@@ -10,11 +10,7 @@ from . import io_tools
 import cv2
 
 
-def create_atlas(samples, thumbnail_size, rois, color_mode):
-    facet_gen = data_generator.DataGenerator(samples, augmentation=None, rois=rois,
-                                             target_shape=thumbnail_size, shuffle=False,
-                                             interpolation='linear', anti_aliasing=0.5, color_mode=color_mode)
-
+def create_atlas(facet_gen):
     images = [None] * len(facet_gen)
     for ii in range(len(facet_gen)):
         images[ii], y = facet_gen[ii]
@@ -24,12 +20,12 @@ def create_atlas(samples, thumbnail_size, rois, color_mode):
     return atlas
 
 
-def build_facets(samples, output_path, facet_key='', **atlas_param):
+def build_facets(facet_gen, output_path, facet_key='', **atlas_param):
     facet_dive = 'facets{}.json'.format(facet_key)
     facet_sprite = 'spriteatlas{}.jpeg'.format(facet_key)
 
-    io_tools.write_file(path.join(output_path, facet_dive), json.dumps(list(samples)))
-    atlas = create_atlas(samples, **atlas_param)
+    io_tools.write_file(path.join(output_path, facet_dive), json.dumps(list(facet_gen.samples)))
+    atlas = create_atlas(facet_gen)
     atlas = cv2.cvtColor(atlas, cv2.COLOR_BGR2RGB)
     jpeg_created, buffer = cv2.imencode(".jpeg", atlas)
     assert jpeg_created
