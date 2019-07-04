@@ -78,9 +78,11 @@ def get_augmentation_pipeline(settings, target_shape, rois, **kwargs):
     :return:
     """
     if settings is not None and settings.enable:
-        return ia.Sequential(
-            AffineTransformation(settings, target_shape, rois, **kwargs)
-        )
+        steps = [AffineTransformation(settings, target_shape, rois, **kwargs)]
+        if settings.color_correct:
+            steps.append(ia.Multiply((0.5, 1.5), per_channel=0.5))
+
+        return ia.Sequential(steps)
     else:
         return ia.Sequential(
             AffineTransformation(None, target_shape, rois, **kwargs)
