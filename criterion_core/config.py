@@ -84,6 +84,7 @@ class CriterionConfig:
         artifact_path = self.artifact_path(artifact_name)
         log.info('Uploading {} to {}'.format(artifact_name, artifact_path))
         io_tools.write_file(artifact_path, payload)
+        return artifact_path.replace(path.join(self.job_dir, ''), '')
 
     def upload_pivot_data(self, summary, tag_fields, summary_path=None, fields_path=None):
         if summary_path is None:
@@ -122,8 +123,8 @@ class CriterionConfig:
         complete_url = self.host_name + self.api_endpoints['complete']
         if tmp_package_path is not None:
             with open(tmp_package_path, 'rb') as f_package:
-                self.upload_artifact(package_path, f_package.read())
-            complete_url += package_path
+                artifact_path = self.upload_artifact(package_path, f_package.read())
+            complete_url += artifact_path
         complete_url += output_args
         try:
             r = requests.post(complete_url)
