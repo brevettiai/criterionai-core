@@ -10,7 +10,7 @@ from criterion_core.utils import tag_utils
 log = logging.getLogger(__name__)
 
 
-def _sample_predictor(model, data_generator, output_index=None):
+def _sample_predictor(model, data_generator, output_index=None, thresholds=[50.0, 80.0, 90.0, 95.0, 98.0, 99.0, 99.5]):
     for idx in range(len(data_generator)):
         samples, X = data_generator.get_batch(idx)
         outputs = model.predict(X)
@@ -25,13 +25,22 @@ def _sample_predictor(model, data_generator, output_index=None):
         dfp = pd.DataFrame(outputs, columns=class_names)
         dff = dfs.apply(lambda x: pd.Series(path.get_folders(x["path"], x["bucket"])[-1]), axis=1)
         dff.columns = ["folder"]
-        df = pd.concat(
-            (dfs,
-             dfp.add_prefix('prob_'),
-             dff,
-             dfp.idxmax(axis=1).rename("prediction")), axis=1)
-        df.dataset_id = df.dataset_id.astype('category')
-        yield df
+        df_security = []
+        for threshold in thresholds:
+            predictions = dfp.gt(threshold / 100.0)
+            predictions["gray"] = predictions.sum(axis=1)==0
+            df_security.append(pd.concat((dfs,
+                       dfp.add_prefix('prob_'),
+                       dff,
+                       predictions
+                       ), axis=1))
+            df_security[-1] = df_security[-1].melt(
+                id_vars=[cn for cn in df_security[-1].columns if cn not in class_names+["gray"]], var_name="prediction",
+                value_name="detection")
+            df_security[-1]["security_threshold"] = str(threshold)
+        df_security = pd.concat(df_security, axis=0)
+        df_security.dataset_id = df_security.dataset_id.astype('category')
+        yield df_security
 
 
 def sample_predictions(model, data_generator, *args, **kwargs):
@@ -54,17 +63,16 @@ def pivot_category_splitter(records):
 
 
 def pivot_summarizer(df_samples, datasets, tags, accept_class="Accept"):
-    df_samples = df_samples.groupby(['category', 'dataset', 'dataset_id', 'folder', 'prediction']).size().reset_index(
+    df_samples = df_samples.groupby(['category', 'dataset', 'dataset_id', 'folder', 'prediction', "security_threshold"])["detection"].sum().reset_index(
         name="count")
     df_samples["id"] = df_samples[["dataset_id", "folder", "prediction"]].apply(lambda x: "-".join(x), axis=1)
     df_samples["dataset_url"] = df_samples.dataset_id.apply(lambda x: "https://app.criterion.ai/data/" + x)
 
     df_tags = pd.concat(pivot_dataset_tags(datasets, tags), axis=0, sort=False).set_index("dataset_id", drop=True)
-
     rec = df_samples.join(df_tags, on="dataset_id").to_dict("records")
     rec = [{k: v for k, v in x.items() if not isinstance(v, float) or not np.isnan(v)} for x in rec]
     rec = list(pivot_category_splitter(rec))
-    add_outlier_classification_summary(rec, accept_class)
+    # add_outlier_classification_summary(rec, accept_class)
 
     fields = {
         "rowFields": [
