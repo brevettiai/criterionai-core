@@ -69,7 +69,7 @@ def setup_data_generators(config):
 
 def evaluate_model(config, finetuned_model, test_gen, rois, classes, max_facet_size=4000):
     test_pred_output = evaluation.sample_predictions(finetuned_model, test_gen)
-    summary, tag_fields = evaluation.pivot_summarizer(test_pred_output, config.datasets, config.tags, classes[0])
+    summary, tag_fields = evaluation.pivot_summarizer(test_pred_output, config.datasets, config.tags, classes)
     config.upload_pivot_data(summary, tag_fields)
 
     for cl, chart in zip(classes, make_security_selection(test_pred_output, classes)):
