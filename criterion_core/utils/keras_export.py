@@ -60,10 +60,10 @@ def define_image_input_receiver(input_tensor, img_format, input_shape, color_mod
     return serving_input_receiver_fn
 
 
-def export_model(keras_model, img_format, input_shape, color_mode, export_path='tf_export', tf_model_path='tf_new'):
+def export_model(keras_model, img_format, input_shape, color_mode, export_path='tf_export', tf_model_path='tf_new', **kwargs):
     estimator = keras.estimator.model_to_estimator(
         model_dir=tf_model_path,
-        keras_model=keras_model)
+        keras_model=keras_model, **kwargs)
 
     movedir(os.path.join(tf_model_path, 'keras'), tf_model_path)
 
