@@ -40,7 +40,7 @@ class CriterionConfig:
             complete=complete_url,
             remote=remote_url,
         )
-        self._temporary_path = tempfile.TemporaryDirectory(prefix=self.name + "-")
+        self._temporary_path = tempfile.TemporaryDirectory(prefix="config-id-" + self.id + "-")
         self.__dict__.update(kwargs)
 
     @staticmethod

@@ -56,10 +56,10 @@ def compare_thresholds(df, class_names, thresholds=[50.0, 90.0, 95.0, 98.0, 99.0
         dfp = df[["prob_" + cc for cc in class_names]]
         dfp.columns = class_names
         predictions = dfp.gt(threshold / 100.0)
-        predictions["gray"] = predictions.sum(axis=1) == 0
+        predictions["eject"] = predictions.sum(axis=1) == 0
         df_security.append(pd.concat((df, predictions), axis=1))
         df_security[-1] = df_security[-1].melt(
-            id_vars=[cn for cn in df_security[-1].columns if cn not in class_names + ["gray"]], var_name="decision",
+            id_vars=[cn for cn in df_security[-1].columns if cn not in class_names + ["eject"]], var_name="decision",
             value_name="detection")
         df_security[-1]["security_threshold"] = threshold
     df_security = pd.concat(df_security, axis=0)

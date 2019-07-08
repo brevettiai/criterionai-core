@@ -47,10 +47,10 @@ def get_tforms(rois, target_shape, input_shape, keep_aspect_ratio=True, **kwargs
         target_shapes[ii] = [roi[1][0]-roi[0][0], roi[1][1]-roi[0][1], target_shape[-1]]
     sc = [target_shape[1-jj] / float(sz[jj]) for jj in range(2)]
     if keep_aspect_ratio:
-        t_scale = np.array([[sc[1], 0, 0], [0, sc[0], 0], [0, 0, 1]], dtype=np.float32)
-    else:
         sc_shared = np.min(sc)
         t_scale = np.array([[sc_shared, 0, 0], [0, sc_shared, 0], [0, 0, 1]], dtype=np.float32)
+    else:
+        t_scale = np.array([[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]], dtype=np.float32)
     target_shapes = [tuple([int(ts[1-ii] * sc[1-ii]) for ii in range(2)]+[ts[-1]]) for ts in target_shapes]
     t_forms = [t_scale.dot(t_form) for t_form in t_forms]
     return t_forms, target_shapes
