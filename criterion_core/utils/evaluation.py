@@ -50,24 +50,26 @@ def pivot_category_splitter(records):
             yield {**r, "category": c}
 
 
-def compare_thresholds(df, class_names, thresholds=[50.0, 90.0, 95.0, 98.0, 99.0]):
+def compare_thresholds(df, class_names, thresholds=[50.0, 90.0, 95.0, 98.0, 99.0], eject_class="eject"):
     df_security = []
+
+    class_ext = class_names + [eject_class] if eject_class not in class_names else class_names
+    dfp = df[["prob_" + cc for cc in class_names]]
+    dfp.columns = class_names
     for threshold in thresholds:
-        dfp = df[["prob_" + cc for cc in class_names]]
-        dfp.columns = class_names
         predictions = dfp.gt(threshold / 100.0)
-        predictions["eject"] = predictions.sum(axis=1) == 0
+        predictions[eject_class] = predictions.sum(axis=1) == 0
         df_security.append(pd.concat((df, predictions), axis=1))
         df_security[-1] = df_security[-1].melt(
-            id_vars=[cn for cn in df_security[-1].columns if cn not in class_names + ["eject"]], var_name="decision",
+            id_vars=[cn for cn in df_security[-1].columns if cn not in class_ext], var_name="decision",
             value_name="detection")
         df_security[-1]["security_threshold"] = threshold
     df_security = pd.concat(df_security, axis=0)
     return df_security
 
 
-def pivot_summarizer(df_samples, datasets, tags, class_names, accept_class="Accept"):
-    df_samples = compare_thresholds(df_samples, class_names)
+def pivot_summarizer(df_samples, datasets, tags, class_names, **kwargs):
+    df_samples = compare_thresholds(df_samples, class_names, **kwargs)
     df_samples = df_samples.groupby(['category', 'dataset', 'dataset_id', 'folder', 'decision', "security_threshold"])["detection"].sum().reset_index(
         name="count")
     df_samples["id"] = df_samples[["dataset_id", "folder", "decision"]].apply(lambda x: "-".join(x), axis=1)
