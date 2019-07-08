@@ -66,10 +66,10 @@ def setup_data_generators(config):
     return test_gen, classes, class_mapping, rois, input_shape, test_set
 
 
-def evaluate_model(config, finetuned_model, test_gen, rois, classes, max_facet_size=4000):
+def evaluate_model(config, finetuned_model, test_gen, rois, classes, max_facet_size=4000, **kwargs):
     test_pred_output = evaluation.sample_predictions(finetuned_model, test_gen)
     config.upload_artifact('test_data_{}_full.csv'.format(config.id), test_pred_output.to_csv(sep=';', encoding='utf-8'))
-    summary, tag_fields = evaluation.pivot_summarizer(test_pred_output, config.datasets, config.tags, classes)
+    summary, tag_fields = evaluation.pivot_summarizer(test_pred_output, config.datasets, config.tags, classes, **kwargs)
     config.upload_pivot_data(summary, tag_fields)
 
     for cl, chart in zip(classes, make_security_selection(test_pred_output, classes)):
