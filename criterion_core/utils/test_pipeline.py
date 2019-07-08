@@ -62,13 +62,13 @@ def setup_data_generators(config):
     test_gen = data_generator.DataGenerator(test_set, classes=classes,
                                             batch_size=config.settings.batch_size, augmentation=None,
                                             target_shape=input_shape, max_epoch_samples=config.settings.max_epoch_samples,
-                                            color_mode=config.settings.color_mode, shuffle=False, rois=rois)
-
+                                            color_mode=config.settings.color_mode, shuffle=True, rois=rois)
     return test_gen, classes, class_mapping, rois, input_shape, test_set
 
 
 def evaluate_model(config, finetuned_model, test_gen, rois, classes, max_facet_size=4000):
     test_pred_output = evaluation.sample_predictions(finetuned_model, test_gen)
+    config.upload_artifact('test_data_{}_full.csv'.format(config.id), test_pred_output.to_csv(sep=';', encoding='utf-8'))
     summary, tag_fields = evaluation.pivot_summarizer(test_pred_output, config.datasets, config.tags, classes)
     config.upload_pivot_data(summary, tag_fields)
 
@@ -86,9 +86,9 @@ def evaluate_model(config, finetuned_model, test_gen, rois, classes, max_facet_s
     return facet_info
 
 
-def load_model(config, model_path):
+def load_model(config, model_path, **kwargs):
     cp_model_path = config.temp_path("model_cp.h5")
     with open(cp_model_path, 'wb') as model_file:
         model_file.write(io_tools.read_file(model_path))
-    model = keras.models.load_model(cp_model_path)
+    model = keras.models.load_model(cp_model_path, **kwargs)
     return model

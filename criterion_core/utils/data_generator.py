@@ -24,7 +24,8 @@ COLOR_MODE_CV2_IMREAD = {
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, samples, classes=None, rois=[], augmentation=None, target_shape=(224, 224), batch_size=32,
                  shuffle=True, target_mode="classification", max_epoch_samples=np.inf,
-                 interpolation='linear', anti_aliasing=False, color_mode="rgb", rescale=127.5, offset=-1.0):
+                 interpolation='linear', anti_aliasing=False, color_mode="rgb", rescale=127.5, offset=-1.0,
+                 keep_aspect_ratio=True):
 
         self.samples = samples
         self.batch_size = batch_size
@@ -39,8 +40,10 @@ class DataGenerator(keras.utils.Sequence):
         self.label_space = self.categorical_encoder(self.classes, class_space)
         self.color_mode = color_mode
         self.target_shape = (int(target_shape[0]), int(target_shape[1]), COLOR_MODES[self.color_mode])
-        self.augmentation = get_augmentation_pipeline(augmentation, self.target_shape, rois, interpolation=interpolation,
-                                                      anti_aliasing=anti_aliasing, rescale=rescale, offset=offset)
+        self.augmentation = get_augmentation_pipeline(augmentation, self.target_shape, rois,
+                                                      interpolation=interpolation,
+                                                      anti_aliasing=anti_aliasing, rescale=rescale, offset=offset,
+                                                      keep_aspect_ratio=keep_aspect_ratio)
         self.max_epoch_samples = max_epoch_samples
         self.on_epoch_end()
 
@@ -92,7 +95,7 @@ class DataGenerator(keras.utils.Sequence):
                 X[ii] = img_t
                 Xmask[ii] = True
             except:
-                log.warning("Error loading %r" % samples_batch[ii])
+                log.warning("Warning: Error loading %r" % samples_batch[ii])
 
         return X, Xmask
 
