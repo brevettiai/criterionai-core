@@ -1,3 +1,5 @@
+NB: code has been moved to https://bitbucket.org/criterionai/core
+
 # Criterion.ai Core
 Criterion Core library enabling integration with the criterion.ai platform for development of training packages
 
